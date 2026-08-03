@@ -82,7 +82,7 @@ export default function ResetPasswordScreen({ navigation, route }: Props) {
       >
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => navigation.navigate('Forgot', { role })}
+          onPress={() => navigation.goBack()}
         >
           <Text style={styles.backText}>‹</Text>
         </TouchableOpacity>

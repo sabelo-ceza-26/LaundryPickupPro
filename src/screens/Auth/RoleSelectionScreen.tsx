@@ -61,6 +61,13 @@ export default function RoleSelectionScreen({ navigation }: Props) {
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
       >
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.navigate('Splash')}
+        >
+          <MaterialCommunityIcons name="arrow-left" size={22} color={colors.textStrong} />
+        </TouchableOpacity>
+
         <Logo size="sm" style={styles.logo} />
 
         <View style={styles.header}>
@@ -137,6 +144,15 @@ const styles = StyleSheet.create({
   logo: {
     alignSelf: 'center',
     marginBottom: 8,
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.backgroundMuted,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 22,
   },
   header: {
     marginTop: 26,

@@ -12,10 +12,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import type { AdminStackParamList } from '../../navigation/AdminNavigator';
+import { useAuth } from '../../hooks/useAuth';
 
 type Props = NativeStackScreenProps<AdminStackParamList, 'Settings'>;
 
 export default function SettingsScreen({ navigation }: Props) {
+  const { signOut } = useAuth();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [orderAlertsEnabled, setOrderAlertsEnabled] = useState(true);
   const [driverAlertsEnabled, setDriverAlertsEnabled] = useState(true);
@@ -33,7 +35,7 @@ export default function SettingsScreen({ navigation }: Props) {
         {
           text: 'Log out',
           style: 'destructive',
-          onPress: () => navigation.replace('Login'),
+          onPress: signOut,
         },
       ]
     );

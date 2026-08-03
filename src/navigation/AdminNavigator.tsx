@@ -24,7 +24,7 @@ const Stack = createNativeStackNavigator<AdminStackParamList>();
 export default function AdminNavigator() {
   return (
     <Stack.Navigator
-      initialRouteName="Login"
+      initialRouteName="Dashboard"
       screenOptions={{
         headerShown: false,
       }}

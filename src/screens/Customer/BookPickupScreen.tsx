@@ -12,9 +12,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import DateTimePicker, {
-  DateTimePickerEvent,
-} from '@react-native-community/datetimepicker';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
   useFonts,
@@ -26,6 +23,7 @@ import {
 
 import BookingHeader from '../../components/BookingHeader';
 import BookingProgress from '../../components/BookingProgress';
+import DateTimePickerModal from '../../components/DateTimePickerModal';
 import { useBooking } from '../../context/BookingContext';
 import type { BookingStackParamList } from '../../navigation/BookingNavigator';
 import { colors } from '../../theme/colors';
@@ -101,6 +99,15 @@ export default function BookPickupScreen({ navigation }: Props) {
     setEditingAddress(null);
   };
 
+  const pickerTitle: string =
+    activePicker === 'pickupDate'
+      ? 'Pickup Date'
+      : activePicker === 'pickupTime'
+        ? 'Pickup Time'
+        : activePicker === 'deliveryDate'
+          ? 'Delivery Date'
+          : 'Delivery Time';
+
   const pickerValue: Date =
     activePicker === 'pickupDate'
       ? booking.pickupDate
@@ -110,28 +117,21 @@ export default function BookPickupScreen({ navigation }: Props) {
           ? booking.deliveryDate
           : booking.deliveryTime;
 
-  const pickerMode: 'date' | 'time' =
-    activePicker === 'pickupTime' || activePicker === 'deliveryTime'
-      ? 'time'
-      : 'date';
-
-  const onPickerChange = (event: DateTimePickerEvent, date?: Date) => {
-    setActivePicker(null);
-    if (event.type === 'set' && date) {
-      switch (activePicker) {
-        case 'pickupDate':
-          updateBooking({ pickupDate: date });
-          break;
-        case 'pickupTime':
-          updateBooking({ pickupTime: date });
-          break;
-        case 'deliveryDate':
-          updateBooking({ deliveryDate: date });
-          break;
-        case 'deliveryTime':
-          updateBooking({ deliveryTime: date });
-          break;
-      }
+  const onPickerSelect = (date: Date) => {
+    if (!activePicker) return;
+    switch (activePicker) {
+      case 'pickupDate':
+        updateBooking({ pickupDate: date });
+        break;
+      case 'pickupTime':
+        updateBooking({ pickupTime: date });
+        break;
+      case 'deliveryDate':
+        updateBooking({ deliveryDate: date });
+        break;
+      case 'deliveryTime':
+        updateBooking({ deliveryTime: date });
+        break;
     }
   };
 
@@ -139,7 +139,7 @@ export default function BookPickupScreen({ navigation }: Props) {
     <SafeAreaView style={styles.safeArea}>
       <BookingHeader
         title="Book a Pickup"
-        onBack={() => navigation.getParent()?.navigate('Home')}
+        onBack={() => navigation.goBack()}
       />
 
       <ScrollView
@@ -310,13 +310,14 @@ export default function BookPickupScreen({ navigation }: Props) {
         </TouchableOpacity>
       </View>
 
-      {activePicker && (
-        <DateTimePicker
-          value={pickerValue}
-          mode={pickerMode}
-          onChange={onPickerChange}
-        />
-      )}
+      <DateTimePickerModal
+        visible={activePicker !== null}
+        mode={activePicker === 'pickupTime' || activePicker === 'deliveryTime' ? 'time' : 'date'}
+        title={pickerTitle}
+        value={pickerValue}
+        onChange={onPickerSelect}
+        onClose={() => setActivePicker(null)}
+      />
 
       <Modal
         visible={editingAddress !== null}

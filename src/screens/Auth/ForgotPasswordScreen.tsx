@@ -72,7 +72,7 @@ export default function ForgotPasswordScreen({ navigation, route }: Props) {
       >
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => navigation.navigate('Auth', { role })}
+          onPress={() => navigation.goBack()}
         >
           <Text style={styles.backText}>‹</Text>
         </TouchableOpacity>
@@ -105,9 +105,7 @@ export default function ForgotPasswordScreen({ navigation, route }: Props) {
 
         <View style={styles.hintRow}>
           <Text style={styles.hintText}>Remembered it? </Text>
-          <TouchableOpacity
-            onPress={() => navigation.navigate('Auth', { role })}
-          >
+          <TouchableOpacity onPress={() => navigation.goBack()}>
             <Text style={styles.hintLink}>Back to log in</Text>
           </TouchableOpacity>
         </View>

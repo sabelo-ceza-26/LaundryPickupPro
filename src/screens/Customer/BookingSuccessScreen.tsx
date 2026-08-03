@@ -18,6 +18,7 @@ import {
   Poppins_700Bold,
 } from '@expo-google-fonts/poppins';
 
+import BookingHeader from '../../components/BookingHeader';
 import { useBooking } from '../../context/BookingContext';
 import type { BookingStackParamList } from '../../navigation/BookingNavigator';
 import { colors } from '../../theme/colors';
@@ -53,6 +54,7 @@ export default function BookingSuccessScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <BookingHeader title="Booking Confirmed" onBack={() => navigation.goBack()} />
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.container}
