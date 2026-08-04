@@ -1,11 +1,10 @@
 import React from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
-import Button from '../../components/Button';
 import type { AuthStackParamList } from '../../navigation/AuthNavigator';
-import { colors } from '../../theme/colors';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Splash'>;
 
@@ -19,7 +18,7 @@ export default function SplashScreen({ navigation }: Props) {
 
       <View style={styles.content}>
         <Image
-          source={require('../../../assets/logo-slate.png')}
+          source={require('../../../assets/logo-purple.png')}
           style={styles.logo}
           resizeMode="contain"
         />
@@ -29,11 +28,19 @@ export default function SplashScreen({ navigation }: Props) {
       </View>
 
       <View style={styles.footer}>
-        <Button
-          title="Get Started"
-          style={styles.ctaButton}
+        <TouchableOpacity
+          activeOpacity={0.85}
           onPress={() => navigation.replace('Role')}
-        />
+        >
+          <LinearGradient
+            colors={['#5B48F7', '#7857FF', '#D6336C']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.ctaButton}
+          >
+            <Text style={styles.ctaText}>Get Started</Text>
+          </LinearGradient>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -42,7 +49,7 @@ export default function SplashScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#C9B6FF',
     overflow: 'hidden',
   },
   decorGlow: {
@@ -50,7 +57,7 @@ const styles = StyleSheet.create({
     width: 480,
     height: 480,
     borderRadius: 240,
-    backgroundColor: 'rgba(100, 116, 139, 0.16)',
+    backgroundColor: 'rgba(91, 72, 247, 0.10)',
     top: '14%',
     left: '50%',
     marginLeft: -240,
@@ -61,7 +68,7 @@ const styles = StyleSheet.create({
     height: 340,
     borderRadius: 170,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: 'rgba(91, 72, 247, 0.14)',
     top: -90,
     right: -110,
   },
@@ -71,7 +78,7 @@ const styles = StyleSheet.create({
     height: 260,
     borderRadius: 130,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: 'rgba(91, 72, 247, 0.12)',
     bottom: -70,
     left: -80,
   },
@@ -80,7 +87,7 @@ const styles = StyleSheet.create({
     width: 150,
     height: 150,
     borderRadius: 75,
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    backgroundColor: 'rgba(91, 72, 247, 0.10)',
     top: '60%',
     right: -40,
   },
@@ -94,7 +101,7 @@ const styles = StyleSheet.create({
     height: 330,
   },
   tagline: {
-    color: 'rgba(255, 255, 255, 0.85)',
+    color: 'rgba(62, 40, 92, 0.85)',
     fontSize: 17,
     fontWeight: '600',
     marginTop: 8,
@@ -105,6 +112,14 @@ const styles = StyleSheet.create({
     paddingBottom: 36,
   },
   ctaButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    height: 56,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  ctaText: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });
