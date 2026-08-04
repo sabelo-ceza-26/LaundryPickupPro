@@ -12,6 +12,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import type { DriverStackParamList } from '../../navigation/DriverNavigator';
+import { useAuth } from '../../hooks/useAuth';
 
 type Props = NativeStackScreenProps<
     DriverStackParamList,
@@ -58,6 +59,7 @@ const orders = [
 ];
 
 export default function DriverHomeScreen({ navigation }: Props) {
+    const { user } = useAuth();
     const [searchText, setSearchText] = useState('');
 
     const filteredOrders = orders.filter((order) =>
@@ -81,10 +83,14 @@ export default function DriverHomeScreen({ navigation }: Props) {
                     </TouchableOpacity>
 
                     <Text style={styles.welcome}>
-                        Welcome, John
+                        Welcome, {user?.name ?? 'Driver'}
                     </Text>
 
-                    <TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={() =>
+                            navigation.navigate('Notifications')
+                        }
+                    >
                         <Ionicons
                             name="notifications-outline"
                             size={24}
