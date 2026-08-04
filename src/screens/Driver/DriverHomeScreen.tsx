@@ -208,9 +208,13 @@ export default function DriverHomeScreen({ navigation }: Props) {
                             <TouchableOpacity
                                 style={styles.viewButton}
                                 onPress={() =>
-                                    navigation.navigate('OrderDetails', {
-                                        order,
-                                    })
+                                    order.type === 'Delivery'
+                                        ? navigation.navigate('DeliveryDetails', {
+                                            order,
+                                        })
+                                        : navigation.navigate('OrderDetails', {
+                                            order,
+                                        })
                                 }
                             >
                                 <Text style={styles.viewButtonText}>
