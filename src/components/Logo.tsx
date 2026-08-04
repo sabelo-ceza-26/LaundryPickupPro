@@ -6,7 +6,7 @@ import { colors } from '../theme/colors';
 type Props = {
   light?: boolean;
   tagline?: string;
-  size?: 'sm' | 'lg';
+  size?: 'sm' | 'md' | 'lg';
   style?: ViewStyle;
 };
 
@@ -17,6 +17,7 @@ export default function Logo({
   style,
 }: Props) {
   const isLarge = size === 'lg';
+  const isMedium = size === 'md';
 
   return (
     <View style={[styles.container, style]}>
@@ -24,7 +25,7 @@ export default function Logo({
         source={require('../../assets/logo-slate.png')}
         style={[
           styles.logo,
-          isLarge ? styles.logoLarge : styles.logoSmall,
+          isLarge ? styles.logoLarge : isMedium ? styles.logoMedium : styles.logoSmall,
         ]}
         resizeMode="contain"
       />
@@ -47,6 +48,10 @@ const styles = StyleSheet.create({
   logoLarge: {
     width: 140,
     height: 140,
+  },
+  logoMedium: {
+    width: 116,
+    height: 116,
   },
   logoSmall: {
     width: 88,
