@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
     ScrollView,
     StyleSheet,
@@ -12,6 +12,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import type { DriverStackParamList } from '../../navigation/DriverNavigator';
+import { useAuth } from '../../hooks/useAuth';
 
 type Props = NativeStackScreenProps<
     DriverStackParamList,
@@ -24,30 +25,47 @@ const orders = [
         orderNumber: 'ORD-1001',
         type: 'Pickup',
         customer: 'Matthew Yako',
+        phone: '083 987 5462',
         address: '173 Sir Lowry, Woodstock',
+        laundromat: 'Clean & Fresh Laundry',
+        laundromatAddress: '17 Hanover Street, District Six',
         time: '10:00 AM',
+        notes: 'Leave laundry bags on the front porch if not answered.',
     },
     {
         id: 2,
         orderNumber: 'ORD-1002',
         type: 'Delivery',
         customer: 'Andiswa Gumede',
+        phone: '082 123 4567',
         address: '173 Sir Lowry, Woodstock',
-        receiver: 'Jessica Moose',
-        receiverAddress: '10 St Marks, Observatory',
+        laundromat: 'Sparkle Laundry',
+        laundromatAddress: '10 Long Street, Cape Town',
         time: '11:00 AM',
+        notes: 'Call before arrival.',
     },
     {
         id: 3,
         orderNumber: 'ORD-1003',
         type: 'Pickup',
         customer: 'Sarah Jenkins',
+        phone: '084 555 7890',
         address: '45 Albert Road, Woodstock',
+        laundromat: 'Fresh Wash Laundry',
+        laundromatAddress: '20 Main Road, Observatory',
         time: '12:30 PM',
+        notes: 'Customer prefers contactless pickup.',
     },
 ];
 
 export default function DriverHomeScreen({ navigation }: Props) {
+    const { user } = useAuth();
+    const [searchText, setSearchText] = useState('');
+
+    const filteredOrders = orders.filter((order) =>
+        order.orderNumber.toLowerCase().includes(searchText.trim().toLowerCase()),
+    );
+
     return (
         <SafeAreaView style={styles.safeArea}>
             <ScrollView contentContainerStyle={styles.container}>
@@ -65,10 +83,14 @@ export default function DriverHomeScreen({ navigation }: Props) {
                     </TouchableOpacity>
 
                     <Text style={styles.welcome}>
-                        Welcome, John
+                        Welcome, {user?.name ?? 'Driver'}
                     </Text>
 
-                    <TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={() =>
+                            navigation.navigate('Notifications')
+                        }
+                    >
                         <Ionicons
                             name="notifications-outline"
                             size={24}
@@ -92,6 +114,8 @@ export default function DriverHomeScreen({ navigation }: Props) {
                         placeholder="Search by Order Number"
                         placeholderTextColor="#888"
                         style={styles.searchInput}
+                        value={searchText}
+                        onChangeText={setSearchText}
                     />
 
                 </View>
@@ -140,7 +164,7 @@ export default function DriverHomeScreen({ navigation }: Props) {
                     Today's Orders
                 </Text>
 
-                {orders.map((order) => (
+                {filteredOrders.map((order) => (
 
                     <View
                         key={order.id}
@@ -177,18 +201,6 @@ export default function DriverHomeScreen({ navigation }: Props) {
                                     {order.address}
                                 </Text>
 
-                                {order.receiver && (
-                                    <>
-                                        <Text style={styles.customer}>
-                                            {order.receiver}
-                                        </Text>
-
-                                        <Text style={styles.address}>
-                                            {order.receiverAddress}
-                                        </Text>
-                                    </>
-                                )}
-
                             </View>
 
                         </View>
@@ -199,7 +211,18 @@ export default function DriverHomeScreen({ navigation }: Props) {
                                 {order.time}
                             </Text>
 
-                            <TouchableOpacity style={styles.viewButton}>
+                            <TouchableOpacity
+                                style={styles.viewButton}
+                                onPress={() =>
+                                    order.type === 'Delivery'
+                                        ? navigation.navigate('DeliveryDetails', {
+                                            order,
+                                        })
+                                        : navigation.navigate('OrderDetails', {
+                                            order,
+                                        })
+                                }
+                            >
                                 <Text style={styles.viewButtonText}>
                                     View
                                 </Text>
