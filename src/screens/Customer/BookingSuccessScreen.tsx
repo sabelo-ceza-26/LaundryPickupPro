@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -20,6 +20,7 @@ import {
 
 import BookingHeader from '../../components/BookingHeader';
 import { useBooking } from '../../context/BookingContext';
+import { useOrders } from '../../context/OrdersContext';
 import type { BookingStackParamList } from '../../navigation/BookingNavigator';
 import { colors } from '../../theme/colors';
 import { formatBookingDate, formatMoney, formatTimeWindow } from '../../utils/format';
@@ -33,10 +34,12 @@ const TEXT_MUTED = '#7A869A';
 
 const GRADIENT_TEAL = [TEAL_MID, TEAL] as const;
 
-const reference = `LPP-${Math.floor(100000 + Math.random() * 900000)}`;
-
 export default function BookingSuccessScreen({ navigation }: Props) {
   const { booking, resetBooking } = useBooking();
+  const { addOrder } = useOrders();
+  const [reference] = useState(
+    () => `LPP-${Math.floor(100000 + Math.random() * 900000)}`
+  );
   const [fontsLoaded] = useFonts({
     Poppins_400Regular,
     Poppins_500Medium,
@@ -47,6 +50,30 @@ export default function BookingSuccessScreen({ navigation }: Props) {
   if (!fontsLoaded) return null;
 
   const handleDone = () => {
+    addOrder({
+      id: `ord-${Date.now()}`,
+      reference,
+      service: 'Pickup & Drop Off',
+      status: 'Scheduled',
+      placedAt: new Date().toLocaleString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+      pickupAddress: booking.pickupAddress,
+      deliveryAddress: booking.deliveryAddress,
+      pickupWindow: `${formatBookingDate(booking.pickupDate)} · ${formatTimeWindow(booking.pickupTime)}`,
+      deliveryWindow: `${formatBookingDate(booking.deliveryDate)} · ${formatTimeWindow(booking.deliveryTime)}`,
+      driver: undefined,
+      driverPhone: undefined,
+      items: [{ name: 'Standard Bag', quantity: 1, price: booking.total }],
+      deliveryFee: 0,
+      total: booking.total,
+      paymentMethod: 'Card',
+      instructions: booking.instructions,
+    });
     resetBooking();
     navigation.getParent()?.navigate('Home');
     navigation.popToTop();
