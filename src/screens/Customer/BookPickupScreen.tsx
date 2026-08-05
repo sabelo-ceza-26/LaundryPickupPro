@@ -202,9 +202,7 @@ export default function BookPickupScreen({ navigation }: Props) {
             </LinearGradient>
             <View style={styles.addressText}>
               <Text style={styles.addressLine}>{booking.deliveryAddress}</Text>
-              <Text style={styles.addressHint}>
-                Where we deliver your clean laundry
-              </Text>
+              <Text style={styles.addressHint}>Where we deliver your laundry</Text>
             </View>
             <View style={styles.changePill}>
               <Text style={styles.changeText}>Change</Text>
