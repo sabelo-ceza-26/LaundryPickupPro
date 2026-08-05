@@ -4,16 +4,13 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import CustomerHomeScreen from '../screens/Customer/CustomerHomeScreen';
-import PlaceholderScreen from '../screens/Customer/PlaceholderScreen';
+import OrderHistoryScreen from '../screens/Customer/OrderHistoryScreen';
+import TrackOrderScreen from '../screens/Customer/TrackOrderScreen';
+import ProfileScreen from '../screens/Customer/ProfileScreen';
 import BookingTab from './BookingNavigator';
+import type { CustomerTabParamList } from './types';
 
-export type CustomerTabParamList = {
-  Home: undefined;
-  Orders: undefined;
-  Book: undefined;
-  Track: undefined;
-  Profile: undefined;
-};
+export type { CustomerTabParamList };
 
 const Tab = createBottomTabNavigator<CustomerTabParamList>();
 
@@ -56,10 +53,10 @@ export default function CustomerTabs() {
       })}
     >
       <Tab.Screen name="Home" component={CustomerHomeScreen} />
-      <Tab.Screen name="Orders" component={PlaceholderScreen} />
+      <Tab.Screen name="Orders" component={OrderHistoryScreen} />
       <Tab.Screen name="Book" component={BookingTab} />
-      <Tab.Screen name="Track" component={PlaceholderScreen} />
-      <Tab.Screen name="Profile" component={PlaceholderScreen} />
+      <Tab.Screen name="Track" component={TrackOrderScreen} />
+      <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );
 }
