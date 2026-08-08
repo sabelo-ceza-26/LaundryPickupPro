@@ -25,27 +25,27 @@ import type { CustomerOrder, OrderStatus } from '../../data/orders';
 import { isOrderActive } from '../../data/orders';
 import { formatMoney } from '../../utils/format';
 
-const TEAL = '#0F363F';
-const TEAL_MID = '#1E5660';
-const TEAL_TINT = '#E2ECEB';
-const ICON_DARK = '#2B3642';
+const BLUE = '#2E6BFF';
+const BLUE_TINT = '#E4EEFF';
+const PURPLE = '#7857FF';
+const TEAL_HEADING = '#0E7A86';
 const TEXT_DARK = '#1F2933';
 const TEXT_MUTED = '#7A869A';
 const BORDER = '#E8ECF1';
 const WHITE = '#FFFFFF';
 
-const GRADIENT_TEAL = [TEAL_MID, TEAL] as const;
+const GRADIENT_VIBRANT = [BLUE, PURPLE] as const;
 
 type FilterKey = 'All' | 'Active' | 'Completed' | 'Cancelled';
 
 const FILTERS: FilterKey[] = ['All', 'Active', 'Completed', 'Cancelled'];
 
 const statusColor: Record<OrderStatus, string> = {
-  Scheduled: '#F4A928',
-  'Picked Up': '#5B48F7',
+  Scheduled: '#E8960C',
+  'Picked Up': '#7857FF',
   'At Laundromat': '#2E6BFF',
   'Out for Delivery': '#00A85A',
-  Delivered: '#687385',
+  Delivered: '#0E9AA7',
   Cancelled: '#E5484D',
 };
 
@@ -80,6 +80,7 @@ function OrderCard({ order, onPress }: OrderCardProps) {
   const color = statusColor[order.status];
   return (
     <TouchableOpacity style={styles.card} activeOpacity={0.85} onPress={onPress}>
+      <View style={[styles.cardAccent, { backgroundColor: color }]} />
       <View style={[styles.cardIcon, { backgroundColor: `${color}1A` }]}>
         <MaterialCommunityIcons name={statusIcon[order.status]} size={24} color={color} />
       </View>
@@ -96,7 +97,9 @@ function OrderCard({ order, onPress }: OrderCardProps) {
         </Text>
         <View style={styles.cardBottomRow}>
           <Text style={styles.cardDate}>{order.placedAt}</Text>
-          <Text style={styles.cardTotal}>{formatMoney(order.total)}</Text>
+          <View style={[styles.cardTotalChip, { backgroundColor: `${color}1A` }]}>
+            <Text style={[styles.cardTotal, { color }]}>{formatMoney(order.total)}</Text>
+          </View>
         </View>
       </View>
     </TouchableOpacity>
@@ -132,18 +135,23 @@ export default function OrderHistoryScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Orders</Text>
-        <TouchableOpacity
-          style={styles.headerIcon}
-          onPress={() => navigation.navigate('Notifications')}
-        >
-          <MaterialCommunityIcons name="bell-outline" size={22} color={ICON_DARK} />
-        </TouchableOpacity>
-      </View>
+      <LinearGradient colors={GRADIENT_VIBRANT} style={styles.headerBanner}>
+        <View style={styles.shine} />
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>My Orders</Text>
+          <TouchableOpacity
+            style={styles.headerIcon}
+            onPress={() => navigation.navigate('Notifications')}
+          >
+            <MaterialCommunityIcons name="bell-outline" size={22} color={WHITE} />
+          </TouchableOpacity>
+        </View>
+      </LinearGradient>
 
       <View style={styles.searchWrap}>
-        <MaterialCommunityIcons name="magnify" size={20} color={TEXT_MUTED} />
+        <View style={styles.searchIconChip}>
+          <MaterialCommunityIcons name="magnify" size={18} color={BLUE} />
+        </View>
         <TextInput
           style={styles.searchInput}
           placeholder="Search by reference or address"
@@ -167,11 +175,16 @@ export default function OrderHistoryScreen() {
               style={[styles.filterChip, active && styles.filterChipActive]}
               onPress={() => setFilter(item)}
             >
-              <Text
-                style={[styles.filterText, active && styles.filterTextActive]}
-              >
-                {item}
-              </Text>
+              {active ? (
+                <LinearGradient
+                  colors={GRADIENT_VIBRANT}
+                  style={styles.filterChipActiveGradient}
+                >
+                  <Text style={[styles.filterText, styles.filterTextActive]}>{item}</Text>
+                </LinearGradient>
+              ) : (
+                <Text style={styles.filterText}>{item}</Text>
+              )}
             </TouchableOpacity>
           );
         })}
@@ -184,11 +197,13 @@ export default function OrderHistoryScreen() {
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <MaterialCommunityIcons
-              name="receipt-text-outline"
-              size={52}
-              color={TEAL_TINT}
-            />
+            <View style={styles.emptyIconWrap}>
+              <MaterialCommunityIcons
+                name="receipt-text-outline"
+                size={52}
+                color={BLUE}
+              />
+            </View>
             <Text style={styles.emptyTitle}>No orders found</Text>
             <Text style={styles.emptySubtitle}>
               Try a different filter or book a new pickup.
@@ -198,7 +213,7 @@ export default function OrderHistoryScreen() {
               activeOpacity={0.9}
               onPress={() => navigation.navigate('Book')}
             >
-              <LinearGradient colors={GRADIENT_TEAL} style={styles.emptyButtonGradient}>
+              <LinearGradient colors={GRADIENT_VIBRANT} style={styles.emptyButtonGradient}>
                 <Text style={styles.emptyButtonText}>Book a Pickup</Text>
               </LinearGradient>
             </TouchableOpacity>
@@ -220,36 +235,64 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: WHITE,
   },
+  headerBanner: {
+    marginBottom: 14,
+  },
+  shine: {
+    position: 'absolute',
+    top: -30,
+    left: -30,
+    width: 90,
+    height: 120,
+    borderRadius: 45,
+    backgroundColor: 'rgba(255, 255, 255, 0.14)',
+    transform: [{ rotate: '20deg' }],
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 12,
+    paddingBottom: 18,
   },
   headerTitle: {
     fontFamily: 'Poppins_700Bold',
     fontSize: 24,
-    color: TEXT_DARK,
+    color: WHITE,
   },
   headerIcon: {
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: '#F3F6F9',
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   searchWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F3F6F9',
+    backgroundColor: WHITE,
+    borderWidth: 1,
+    borderColor: BORDER,
     borderRadius: 16,
-    paddingHorizontal: 14,
-    height: 48,
+    paddingHorizontal: 10,
+    height: 50,
     marginHorizontal: 20,
     marginBottom: 14,
+    elevation: 2,
+    shadowColor: '#26384A',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+  },
+  searchIconChip: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    backgroundColor: BLUE_TINT,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   searchInput: {
     flex: 1,
@@ -264,22 +307,34 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   filterChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#F3F6F9',
     marginRight: 8,
+    overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: BORDER,
+    backgroundColor: WHITE,
   },
   filterChipActive: {
-    backgroundColor: TEAL,
+    borderColor: 'transparent',
+  },
+  filterChipActiveGradient: {
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   filterText: {
     fontFamily: 'Poppins_500Medium',
     fontSize: 12,
     color: TEXT_MUTED,
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    textAlign: 'center',
   },
   filterTextActive: {
     color: WHITE,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
   },
   listContent: {
     paddingHorizontal: 20,
@@ -289,6 +344,7 @@ const styles = StyleSheet.create({
   },
   card: {
     flexDirection: 'row',
+    alignItems: 'stretch',
     backgroundColor: WHITE,
     borderRadius: 18,
     borderWidth: 1,
@@ -300,6 +356,12 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
+  },
+  cardAccent: {
+    width: 4,
+    alignSelf: 'stretch',
+    borderRadius: 2,
+    marginRight: 12,
   },
   cardIcon: {
     width: 48,
@@ -320,7 +382,7 @@ const styles = StyleSheet.create({
   cardReference: {
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 13,
-    color: TEAL,
+    color: TEAL_HEADING,
     letterSpacing: 0.3,
   },
   statusPill: {
@@ -355,9 +417,14 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: TEXT_MUTED,
   },
+  cardTotalChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
   cardTotal: {
     fontFamily: 'Poppins_700Bold',
-    fontSize: 14,
+    fontSize: 13,
     color: TEXT_DARK,
   },
   empty: {
@@ -365,6 +432,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingTop: 60,
+  },
+  emptyIconWrap: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: BLUE_TINT,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   emptyTitle: {
     fontFamily: 'Poppins_600SemiBold',

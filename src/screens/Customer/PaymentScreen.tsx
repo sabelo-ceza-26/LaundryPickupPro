@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
+  Modal,
   ScrollView,
   StyleSheet,
   Text,
@@ -24,6 +24,7 @@ import {
 import BookingHeader from '../../components/BookingHeader';
 import BookingProgress from '../../components/BookingProgress';
 import { useBooking } from '../../context/BookingContext';
+import type { Booking } from '../../context/BookingContext';
 import type { BookingStackParamList } from '../../navigation/BookingNavigator';
 import { colors } from '../../theme/colors';
 import { formatMoney } from '../../utils/format';
@@ -44,7 +45,26 @@ const TEXT_DARK = '#1F2933';
 const TEXT_MUTED = '#7A869A';
 const BORDER = '#E8ECF1';
 
-const GRADIENT_TEAL = [TEAL_MID, TEAL] as const;
+const GRADIENT_SUMMARY = ['#2E6BFF', '#7857FF'] as const;
+const GRADIENT_NEXT = ['#17879B', '#0E5E73'] as const;
+const GRADIENT_REF = ['#00A85A', '#0B7A50'] as const;
+
+type MethodMeta = {
+  color: string;
+  tint: string;
+};
+
+const METHOD_META: Record<PaymentMethod, MethodMeta> = {
+  card: { color: '#2E6BFF', tint: '#E4EEFF' },
+  eft: { color: '#0E9AA7', tint: '#D6F0F4' },
+  cash: { color: '#00A85A', tint: '#DDF8E8' },
+};
+
+const PAYMENT_LABEL: Record<PaymentMethod, string> = {
+  card: 'Card',
+  eft: 'EFT',
+  cash: 'Cash',
+};
 
 const EFT_REFERENCE = `LPP-${Math.floor(100000 + Math.random() * 900000)}`;
 
@@ -60,7 +80,7 @@ const formatExpiry = (text: string) => {
 };
 
 export default function PaymentScreen({ navigation }: Props) {
-  const { booking } = useBooking();
+  const { booking, updateBooking } = useBooking();
   const [fontsLoaded] = useFonts({
     Poppins_400Regular,
     Poppins_500Medium,
@@ -74,6 +94,7 @@ export default function PaymentScreen({ navigation }: Props) {
   const [cvv, setCvv] = useState('');
   const [errors, setErrors] = useState<CardErrors>({});
   const [paying, setPaying] = useState(false);
+  const [confirmVisible, setConfirmVisible] = useState(false);
 
   if (!fontsLoaded) return null;
 
@@ -92,6 +113,7 @@ export default function PaymentScreen({ navigation }: Props) {
   const handlePayNow = () => {
     if (paying) return;
     if (method === 'card' && !validate()) return;
+    updateBooking({ paymentMethod: PAYMENT_LABEL[method] as Booking['paymentMethod'] });
     setPaying(true);
     setTimeout(() => {
       setPaying(false);
@@ -100,14 +122,14 @@ export default function PaymentScreen({ navigation }: Props) {
   };
 
   const handleCancel = () => {
-    Alert.alert('Cancel payment', 'Are you sure you want to cancel?', [
-      { text: 'Keep paying', style: 'cancel' },
-      {
-        text: 'Cancel',
-        style: 'destructive',
-        onPress: () => navigation.goBack(),
-      },
-    ]);
+    setConfirmVisible(true);
+  };
+
+  const keepPaying = () => setConfirmVisible(false);
+
+  const confirmCancel = () => {
+    setConfirmVisible(false);
+    navigation.goBack();
   };
 
   return (
@@ -125,9 +147,9 @@ export default function PaymentScreen({ navigation }: Props) {
       >
         <BookingProgress current={3} title="Payment details" />
 
-        <View style={styles.summaryCard}>
+        <LinearGradient colors={GRADIENT_SUMMARY} style={styles.summaryCard}>
           <View style={styles.summaryIcon}>
-            <MaterialCommunityIcons name="basket-outline" size={22} color={colors.white} />
+            <MaterialCommunityIcons name="basket-outline" size={22} color="#7857FF" />
           </View>
           <View style={styles.summaryBody}>
             <Text style={styles.summaryLabel}>Laundry Pickup Booking</Text>
@@ -136,90 +158,53 @@ export default function PaymentScreen({ navigation }: Props) {
             </Text>
           </View>
           <Text style={styles.summaryValue}>{formatMoney(booking.total)}</Text>
-        </View>
+        </LinearGradient>
 
         <Text style={styles.sectionLabel}>Payment Method</Text>
         <View style={styles.methodRow}>
-          <TouchableOpacity
-            style={[
-              styles.methodCard,
-              method === 'card' && styles.methodCardSelected,
-            ]}
-            onPress={() => setMethod('card')}
-          >
-            <MaterialCommunityIcons
-              name="credit-card-outline"
-              size={22}
-              color={method === 'card' ? TEAL : TEXT_MUTED}
-            />
-            <Text
-              style={[
-                styles.methodText,
-                method === 'card' && styles.methodTextSelected,
-              ]}
-            >
-              Card
-            </Text>
-            {method === 'card' && (
-              <View style={styles.methodCheck}>
-                <MaterialCommunityIcons name="check" size={12} color={colors.white} />
-              </View>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.methodCard,
-              method === 'eft' && styles.methodCardSelected,
-            ]}
-            onPress={() => setMethod('eft')}
-          >
-            <MaterialCommunityIcons
-              name="bank-transfer"
-              size={22}
-              color={method === 'eft' ? TEAL : TEXT_MUTED}
-            />
-            <Text
-              style={[
-                styles.methodText,
-                method === 'eft' && styles.methodTextSelected,
-              ]}
-            >
-              EFT
-            </Text>
-            {method === 'eft' && (
-              <View style={styles.methodCheck}>
-                <MaterialCommunityIcons name="check" size={12} color={colors.white} />
-              </View>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.methodCard,
-              method === 'cash' && styles.methodCardSelected,
-            ]}
-            onPress={() => setMethod('cash')}
-          >
-            <MaterialCommunityIcons
-              name="cash"
-              size={22}
-              color={method === 'cash' ? TEAL : TEXT_MUTED}
-            />
-            <Text
-              style={[
-                styles.methodText,
-                method === 'cash' && styles.methodTextSelected,
-              ]}
-            >
-              Cash
-            </Text>
-            {method === 'cash' && (
-              <View style={styles.methodCheck}>
-                <MaterialCommunityIcons name="check" size={12} color={colors.white} />
-              </View>
-            )}
-          </TouchableOpacity>
+          {(
+            [
+              ['card', 'credit-card-outline'],
+              ['eft', 'bank-transfer'],
+              ['cash', 'cash'],
+            ] as [PaymentMethod, string][]
+          ).map(([key, iconName]) => {
+            const meta = METHOD_META[key];
+            const selected = method === key;
+            return (
+              <TouchableOpacity
+                key={key}
+                style={[
+                  styles.methodCard,
+                  selected && {
+                    borderColor: meta.color,
+                    backgroundColor: meta.tint,
+                  },
+                ]}
+                onPress={() => setMethod(key)}
+              >
+                <MaterialCommunityIcons
+                  name={iconName as keyof typeof MaterialCommunityIcons.glyphMap}
+                  size={22}
+                  color={selected ? meta.color : TEXT_MUTED}
+                />
+                <Text
+                  style={[
+                    styles.methodText,
+                    selected && { color: meta.color },
+                    selected && styles.methodTextSelected,
+                  ]}
+                >
+                  {key === 'card' ? 'Card' : key === 'eft' ? 'EFT' : 'Cash'}
+                </Text>
+                {selected && (
+                  <View style={[styles.methodCheck, { backgroundColor: meta.color }]}>
+                    <MaterialCommunityIcons name="check" size={12} color={colors.white} />
+                  </View>
+                )}
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         {method === 'card' && (
@@ -348,7 +333,9 @@ export default function PaymentScreen({ navigation }: Props) {
 
         {method === 'cash' && (
           <View style={styles.cashNote}>
-            <MaterialCommunityIcons name="cash-check" size={22} color={TEAL} />
+            <View style={styles.cashNoteIcon}>
+              <MaterialCommunityIcons name="cash-check" size={20} color="#00A85A" />
+            </View>
             <Text style={styles.cashNoteText}>
               Pay the driver in cash when your laundry is collected.
             </Text>
@@ -377,18 +364,61 @@ export default function PaymentScreen({ navigation }: Props) {
           disabled={paying}
           onPress={handlePayNow}
         >
-          <LinearGradient colors={GRADIENT_TEAL} style={styles.payButton}>
+          <LinearGradient colors={GRADIENT_NEXT} style={styles.payButton}>
             {paying ? (
               <ActivityIndicator color={colors.white} />
             ) : (
               <>
+                <MaterialCommunityIcons
+                  name="lock-check-outline"
+                  size={18}
+                  color={colors.white}
+                  style={styles.payButtonIcon}
+                />
                 <Text style={styles.payButtonText}>Pay Now</Text>
                 <MaterialCommunityIcons name="lock" size={16} color={colors.white} />
               </>
             )}
+            <View style={styles.payButtonShine} />
           </LinearGradient>
         </TouchableOpacity>
       </View>
+
+      <Modal
+        visible={confirmVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={keepPaying}
+      >
+        <View style={styles.confirmOverlay}>
+          <View style={styles.confirmCard}>
+            <View style={styles.confirmIcon}>
+              <MaterialCommunityIcons name="close-circle-outline" size={36} color="#E5484D" />
+            </View>
+            <Text style={styles.confirmTitle}>Cancel payment?</Text>
+            <Text style={styles.confirmDesc}>
+              Your booking details will be kept, but you'll be taken back to
+              review and can try again.
+            </Text>
+            <TouchableOpacity
+              style={styles.confirmKeepBtn}
+              onPress={keepPaying}
+              activeOpacity={0.8}
+            >
+              <MaterialCommunityIcons name="credit-card-outline" size={16} color={TEAL} />
+              <Text style={styles.confirmKeepText}>Keep paying</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.confirmDangerBtn}
+              onPress={confirmCancel}
+              activeOpacity={0.85}
+            >
+              <MaterialCommunityIcons name="close" size={16} color="#FFFFFF" />
+              <Text style={styles.confirmDangerText}>Yes, cancel payment</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -409,24 +439,21 @@ const styles = StyleSheet.create({
   summaryCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
     borderRadius: 18,
-    borderWidth: 1,
-    borderColor: BORDER,
     paddingHorizontal: 16,
     paddingVertical: 16,
     marginBottom: 24,
-    elevation: 1,
-    shadowColor: '#26384A',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
+    elevation: 4,
+    shadowColor: '#4B4BF2',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
   },
   summaryIcon: {
     width: 44,
     height: 44,
     borderRadius: 14,
-    backgroundColor: TEAL,
+    backgroundColor: colors.white,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -437,18 +464,18 @@ const styles = StyleSheet.create({
   summaryLabel: {
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 14,
-    color: TEXT_DARK,
+    color: '#FFFFFF',
   },
   summaryHint: {
     fontFamily: 'Poppins_400Regular',
     fontSize: 11,
-    color: TEXT_MUTED,
+    color: 'rgba(255, 255, 255, 0.8)',
     marginTop: 2,
   },
   summaryValue: {
     fontFamily: 'Poppins_700Bold',
-    fontSize: 18,
-    color: TEAL,
+    fontSize: 20,
+    color: '#FFFFFF',
   },
   sectionLabel: {
     fontFamily: 'Poppins_600SemiBold',
@@ -548,18 +575,26 @@ const styles = StyleSheet.create({
   cashNote: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F0F5F4',
+    backgroundColor: '#DDF8E8',
     borderRadius: 16,
     paddingHorizontal: 14,
     paddingVertical: 14,
     marginTop: 16,
+  },
+  cashNoteIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    backgroundColor: colors.white,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   cashNoteText: {
     flex: 1,
     fontFamily: 'Poppins_400Regular',
     fontSize: 13,
     lineHeight: 19,
-    color: '#4A5C64',
+    color: '#1F6B44',
     marginLeft: 10,
   },
   eftCard: {
@@ -604,7 +639,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#F4F8F7',
+    backgroundColor: '#E4EEFF',
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -613,12 +648,12 @@ const styles = StyleSheet.create({
   eftReferenceLabel: {
     fontFamily: 'Poppins_400Regular',
     fontSize: 11,
-    color: TEXT_MUTED,
+    color: '#1F4E79',
   },
   eftReferenceValue: {
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 13,
-    color: TEAL,
+    color: '#2E6BFF',
   },
   secureRow: {
     flexDirection: 'row',
@@ -672,16 +707,104 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     height: 58,
     borderRadius: 18,
+    overflow: 'hidden',
     elevation: 4,
-    shadowColor: TEAL,
+    shadowColor: '#0E5E73',
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.3,
     shadowRadius: 10,
+  },
+  payButtonIcon: {
+    marginRight: 8,
+  },
+  payButtonShine: {
+    position: 'absolute',
+    top: -30,
+    left: -30,
+    width: 90,
+    height: 120,
+    borderRadius: 45,
+    backgroundColor: 'rgba(255, 255, 255, 0.14)',
+    transform: [{ rotate: '20deg' }],
   },
   payButtonText: {
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 16,
     color: colors.white,
     marginRight: 8,
+  },
+  confirmOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(18, 38, 58, 0.55)',
+    justifyContent: 'center',
+    paddingHorizontal: 28,
+  },
+  confirmCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    paddingHorizontal: 22,
+    paddingVertical: 24,
+    alignItems: 'center',
+    elevation: 14,
+    shadowColor: '#0F363F',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+  },
+  confirmIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#FDE7E8',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  confirmTitle: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 18,
+    color: '#1F2933',
+    marginBottom: 6,
+  },
+  confirmDesc: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 13,
+    lineHeight: 20,
+    color: TEXT_MUTED,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  confirmKeepBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'stretch',
+    height: 50,
+    borderRadius: 15,
+    borderWidth: 1.5,
+    borderColor: TEAL,
+    backgroundColor: '#FFFFFF',
+    marginBottom: 10,
+  },
+  confirmKeepText: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 15,
+    color: TEAL,
+    marginLeft: 6,
+  },
+  confirmDangerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'stretch',
+    height: 50,
+    borderRadius: 15,
+    backgroundColor: '#E5484D',
+  },
+  confirmDangerText: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 15,
+    color: '#FFFFFF',
+    marginLeft: 6,
   },
 });

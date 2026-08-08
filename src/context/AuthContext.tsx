@@ -16,6 +16,7 @@ type AuthContextValue = {
   lastRole: Role | null;
   signIn: (role: Role, user: User) => void;
   signOut: () => void;
+  updateUser: (patch: Partial<Omit<User, 'id' | 'role'>>) => void;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -38,6 +39,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   }, []);
 
+  const updateUser = useCallback((patch: Partial<Omit<User, 'id' | 'role'>>) => {
+    setUser((current) => (current ? { ...current, ...patch } : current));
+  }, []);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       isAuthenticated: user !== null,
@@ -47,8 +52,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       lastRole,
       signIn,
       signOut,
+      updateUser,
     }),
-    [user, role, hasSignedInBefore, lastRole, signIn, signOut]
+    [user, role, hasSignedInBefore, lastRole, signIn, signOut, updateUser]
   );
 
   return (

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Image,
   Linking,
@@ -27,28 +27,49 @@ import { formatMoney } from '../../utils/format';
 
 type TrackRoute = RouteProp<CustomerTabParamList, 'Track'>;
 
-const PURPLE_DARK = '#5B21B6';
-const PURPLE_MID = '#7C3AED';
-const PURPLE_TINT = '#EFEAFB';
-const GOLD = '#F59E0B';
+const PRIMARY = '#2E6BFF';
+const PURPLE = '#7857FF';
+const TEAL = '#0E9AA7';
+const TEAL_DARK = '#0E7A86';
+const GREEN = '#00A85A';
+const GREEN_DARK = '#0B7A50';
+const AMBER = '#E8960C';
+const DANGER = '#E5484D';
 const TEXT_DARK = '#1F2933';
 const TEXT_MUTED = '#7A869A';
-const BORDER = '#E6E0F5';
-const BG = '#F6F4FB';
+const BORDER = '#E8ECF1';
+const BG = '#F5F7FA';
 const WHITE = '#FFFFFF';
 
-const GRADIENT_HEADER = ['#6D28D9', '#4C1D95'] as const;
+const BLUE_TINT = '#E4EEFF';
+const PURPLE_TINT = '#EFEBFF';
+const TEAL_TINT = '#D6F0F4';
+const GREEN_TINT = '#DDF8E8';
+const AMBER_TINT = '#FFF0B8';
+
+const GRADIENT_POP = ['#33C9B2', '#2E6BFF'] as const;
+const GRADIENT_VIBRANT = ['#2E6BFF', '#7857FF'] as const;
+const GRADIENT_GREEN = [GREEN, GREEN_DARK] as const;
 
 const DEFAULT_LAT = -33.9359;
 const DEFAULT_LNG = 18.4632;
 
 const statusColor: Record<OrderStatus, string> = {
-  Scheduled: GOLD,
-  'Picked Up': '#8B5CF6',
-  'At Laundromat': '#2563EB',
-  'Out for Delivery': '#F97316',
-  Delivered: '#9CA3AF',
-  Cancelled: '#E5484D',
+  Scheduled: AMBER,
+  'Picked Up': PURPLE,
+  'At Laundromat': PRIMARY,
+  'Out for Delivery': TEAL,
+  Delivered: GREEN,
+  Cancelled: DANGER,
+};
+
+const statusTint: Record<OrderStatus, string> = {
+  Scheduled: AMBER_TINT,
+  'Picked Up': PURPLE_TINT,
+  'At Laundromat': BLUE_TINT,
+  'Out for Delivery': TEAL_TINT,
+  Delivered: GREEN_TINT,
+  Cancelled: '#FDE7E8',
 };
 
 const statusIcon: Record<OrderStatus, keyof typeof MaterialCommunityIcons.glyphMap> = {
@@ -96,7 +117,10 @@ export default function TrackOrderScreen() {
   if (!order) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <LinearGradient colors={GRADIENT_HEADER} style={styles.header}>
+        <LinearGradient colors={GRADIENT_POP} style={styles.header}>
+          <View style={styles.decorCircleOne} />
+          <View style={styles.decorCircleTwo} />
+          <View style={styles.headerShine} />
           <TouchableOpacity
             style={styles.headerIcon}
             onPress={() =>
@@ -114,7 +138,9 @@ export default function TrackOrderScreen() {
           </TouchableOpacity>
         </LinearGradient>
         <View style={styles.empty}>
-          <MaterialCommunityIcons name="map-marker-off-outline" size={52} color={PURPLE_TINT} />
+          <View style={styles.emptyIconWrap}>
+            <MaterialCommunityIcons name="map-marker-off-outline" size={44} color={PRIMARY} />
+          </View>
           <Text style={styles.emptyTitle}>No active orders</Text>
           <Text style={styles.emptySubtitle}>
             Your active orders will show here. Book a pickup to get started.
@@ -124,7 +150,8 @@ export default function TrackOrderScreen() {
             activeOpacity={0.9}
             onPress={() => navigation.navigate('Book')}
           >
-            <LinearGradient colors={GRADIENT_HEADER} style={styles.emptyButtonGradient}>
+            <LinearGradient colors={GRADIENT_VIBRANT} style={styles.emptyButtonGradient}>
+              <View style={styles.shine} />
               <Text style={styles.emptyButtonText}>Book a Pickup</Text>
             </LinearGradient>
           </TouchableOpacity>
@@ -150,9 +177,10 @@ export default function TrackOrderScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <LinearGradient colors={GRADIENT_HEADER} style={styles.header}>
+      <LinearGradient colors={GRADIENT_POP} style={styles.header}>
         <View style={styles.decorCircleOne} />
         <View style={styles.decorCircleTwo} />
+        <View style={styles.headerShine} />
         <TouchableOpacity
           style={styles.headerIcon}
           onPress={() =>
@@ -189,13 +217,16 @@ export default function TrackOrderScreen() {
                   <TouchableOpacity
                     key={item.id}
                     style={[styles.orderChip, active && styles.orderChipActive]}
+                    activeOpacity={0.9}
                     onPress={() => setSelectedId(item.id)}
                   >
-                    <Text
-                      style={[styles.orderChipText, active && styles.orderChipTextActive]}
-                    >
-                      {item.reference}
-                    </Text>
+                    {active ? (
+                      <LinearGradient colors={GRADIENT_VIBRANT} style={styles.orderChipGradient}>
+                        <Text style={styles.orderChipTextActive}>{item.reference}</Text>
+                      </LinearGradient>
+                    ) : (
+                      <Text style={styles.orderChipText}>{item.reference}</Text>
+                    )}
                   </TouchableOpacity>
                 );
               })}
@@ -204,7 +235,7 @@ export default function TrackOrderScreen() {
         )}
 
         <View style={styles.orderCard}>
-          <View style={styles.orderIcon}>
+          <View style={[styles.orderIcon, { backgroundColor: statusTint[order.status] }]}>
             <MaterialCommunityIcons
               name={statusIcon[order.status]}
               size={26}
@@ -239,20 +270,28 @@ export default function TrackOrderScreen() {
                 resizeMode="cover"
               />
               <View style={styles.mapPin}>
-                <MaterialCommunityIcons name="map-marker" size={44} color={GOLD} />
+                <MaterialCommunityIcons name="map-marker" size={44} color={AMBER} />
               </View>
-              <View style={styles.mapAddressTag}>
+              <LinearGradient colors={GRADIENT_VIBRANT} style={styles.mapAddressTag}>
+                <MaterialCommunityIcons name="map-marker" size={15} color={WHITE} />
                 <Text style={styles.mapAddressText} numberOfLines={1}>
                   {order.deliveryAddress}
+                </Text>
+              </LinearGradient>
+              <View style={styles.mapEtaBadge}>
+                <MaterialCommunityIcons name="clock-fast" size={13} color={GREEN_DARK} />
+                <Text style={styles.mapEtaText}>
+                  {isDelivered ? 'Delivered' : '1:00 PM – 3:00 PM'}
                 </Text>
               </View>
               <Text style={styles.mapAttribution}>© OpenStreetMap contributors</Text>
             </View>
-            <View style={styles.mapFooter}>
-              <MaterialCommunityIcons name="google-maps" size={20} color={PURPLE_DARK} />
+            <LinearGradient colors={GRADIENT_VIBRANT} style={styles.mapFooter}>
+              <View style={styles.shine} />
+              <MaterialCommunityIcons name="google-maps" size={18} color={WHITE} />
               <Text style={styles.mapFooterText}>Open in Google Maps</Text>
-              <MaterialCommunityIcons name="open-in-new" size={16} color={TEXT_MUTED} />
-            </View>
+              <MaterialCommunityIcons name="open-in-new" size={16} color="rgba(255, 255, 255, 0.85)" />
+            </LinearGradient>
           </View>
         </TouchableOpacity>
 
@@ -261,28 +300,42 @@ export default function TrackOrderScreen() {
             const reached = index <= stepIndex;
             const isCurrent = index === stepIndex && !isDelivered;
             const isLast = index === ORDER_STEPS.length - 1;
+            const completed = index < stepIndex;
+            const dotBg = isCurrent
+              ? statusTint[order.status]
+              : reached
+              ? statusColor[order.status]
+              : '#F1F4F8';
+            const dotBorder = isCurrent
+              ? statusColor[order.status]
+              : reached
+              ? statusColor[order.status]
+              : '#E1E7EC';
             return (
               <View key={step.key} style={styles.timelineRow}>
                 <View style={styles.timelineRail}>
                   <View
-                    style={[
-                      styles.timelineDot,
-                      reached && styles.timelineDotReached,
-                      isCurrent && styles.timelineDotCurrent,
-                    ]}
+                    style={[styles.timelineDot, { backgroundColor: dotBg, borderColor: dotBorder }]}
                   >
-                    {reached && !isCurrent && (
-                      <MaterialCommunityIcons name="check" size={14} color={WHITE} />
-                    )}
-                    {isCurrent && (
-                      <MaterialCommunityIcons name="truck-fast-outline" size={16} color={PURPLE_DARK} />
+                    {reached ? (
+                      <MaterialCommunityIcons
+                        name={isCurrent ? statusIcon[order.status] : 'check'}
+                        size={16}
+                        color={isCurrent ? statusColor[order.status] : WHITE}
+                      />
+                    ) : (
+                      <MaterialCommunityIcons
+                        name={statusIcon[step.key]}
+                        size={16}
+                        color="#B9C3CD"
+                      />
                     )}
                   </View>
                   {!isLast && (
                     <View
                       style={[
                         styles.timelineLine,
-                        index < stepIndex && styles.timelineLineReached,
+                        completed && styles.timelineLineReached,
                       ]}
                     />
                   )}
@@ -309,26 +362,30 @@ export default function TrackOrderScreen() {
         </View>
 
         <View style={styles.driverCard}>
-          <LinearGradient colors={GRADIENT_HEADER} style={styles.driverAvatar}>
+          <View style={styles.driverAvatar}>
             <Text style={styles.driverAvatarText}>
               {(order.driver ?? '?').charAt(0).toUpperCase()}
             </Text>
-          </LinearGradient>
+          </View>
           <View style={styles.driverBody}>
             <Text style={styles.driverLabel}>Your driver</Text>
             <Text style={styles.driverName}>{order.driver ?? 'Assigning a driver…'}</Text>
             {!!order.driverPhone && <Text style={styles.driverPhone}>{order.driverPhone}</Text>}
           </View>
           {!!order.driverPhone && (
-            <TouchableOpacity style={styles.callButton} onPress={callDriver}>
-              <MaterialCommunityIcons name="phone" size={20} color={WHITE} />
+            <TouchableOpacity style={styles.callButtonWrap} activeOpacity={0.9} onPress={callDriver}>
+              <LinearGradient colors={GRADIENT_GREEN} style={styles.callButton}>
+                <View style={styles.shine} />
+                <MaterialCommunityIcons name="phone" size={16} color={WHITE} />
+                <Text style={styles.callButtonText}>Call</Text>
+              </LinearGradient>
             </TouchableOpacity>
           )}
         </View>
 
         <View style={styles.etaRow}>
           <View style={styles.etaIcon}>
-            <MaterialCommunityIcons name="clock-fast" size={24} color={GOLD} />
+            <MaterialCommunityIcons name="clock-fast" size={24} color={AMBER} />
           </View>
           <View style={styles.etaBody}>
             <Text style={styles.etaLabel}>Estimated delivery</Text>
@@ -341,7 +398,7 @@ export default function TrackOrderScreen() {
 
         <TouchableOpacity style={styles.helpRow} onPress={() => navigation.navigate('Support')}>
           <View style={styles.helpIcon}>
-            <MaterialCommunityIcons name="headset" size={20} color={PURPLE_DARK} />
+            <MaterialCommunityIcons name="headset" size={20} color={PURPLE} />
           </View>
           <Text style={styles.helpText}>Need help with this order?</Text>
           <MaterialCommunityIcons name="chevron-right" size={20} color={TEXT_MUTED} />
@@ -354,7 +411,7 @@ export default function TrackOrderScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: WHITE,
+    backgroundColor: BG,
   },
   header: {
     flexDirection: 'row',
@@ -385,6 +442,26 @@ const styles = StyleSheet.create({
     bottom: -50,
     left: -30,
   },
+  headerShine: {
+    position: 'absolute',
+    top: -46,
+    right: -20,
+    width: 90,
+    height: 120,
+    borderRadius: 45,
+    backgroundColor: 'rgba(255, 255, 255, 0.14)',
+    transform: [{ rotate: '-20deg' }],
+  },
+  shine: {
+    position: 'absolute',
+    top: -30,
+    left: -30,
+    width: 90,
+    height: 120,
+    borderRadius: 45,
+    backgroundColor: 'rgba(255, 255, 255, 0.14)',
+    transform: [{ rotate: '20deg' }],
+  },
   headerTitle: {
     flex: 1,
     textAlign: 'center',
@@ -411,31 +488,43 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 13,
-    color: TEXT_MUTED,
+    color: TEAL_DARK,
     marginBottom: 8,
   },
   orderChips: {
     paddingBottom: 14,
   },
   orderChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 9,
     borderRadius: 20,
     backgroundColor: WHITE,
     borderWidth: 1.5,
     borderColor: BORDER,
     marginRight: 8,
+    overflow: 'hidden',
   },
   orderChipActive: {
-    backgroundColor: PURPLE_DARK,
-    borderColor: PURPLE_DARK,
+    borderColor: PRIMARY,
+    elevation: 2,
+    shadowColor: PRIMARY,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
+  },
+  orderChipGradient: {
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    alignItems: 'center',
   },
   orderChipText: {
     fontFamily: 'Poppins_500Medium',
     fontSize: 12,
     color: TEXT_DARK,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
   },
   orderChipTextActive: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 12,
     color: WHITE,
   },
   orderCard: {
@@ -448,7 +537,7 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 14,
     elevation: 1,
-    shadowColor: '#3B1B8A',
+    shadowColor: PRIMARY,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
@@ -456,8 +545,7 @@ const styles = StyleSheet.create({
   orderIcon: {
     width: 50,
     height: 50,
-    borderRadius: 16,
-    backgroundColor: PURPLE_TINT,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -468,7 +556,7 @@ const styles = StyleSheet.create({
   orderReference: {
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 14,
-    color: PURPLE_DARK,
+    color: TEAL_DARK,
   },
   orderAddress: {
     fontFamily: 'Poppins_400Regular',
@@ -509,7 +597,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     overflow: 'hidden',
     elevation: 1,
-    shadowColor: '#3B1B8A',
+    shadowColor: PRIMARY,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.06,
     shadowRadius: 10,
@@ -517,7 +605,7 @@ const styles = StyleSheet.create({
   mapCanvas: {
     height: 230,
     overflow: 'hidden',
-    backgroundColor: '#E7E0F6',
+    backgroundColor: '#E8EEF7',
   },
   mapImage: {
     position: 'absolute',
@@ -540,20 +628,40 @@ const styles = StyleSheet.create({
     top: 12,
     left: 12,
     right: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+    flexDirection: 'row',
+    alignItems: 'center',
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 8,
     elevation: 2,
-    shadowColor: '#3B1B8A',
+    shadowColor: PRIMARY,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.15,
     shadowRadius: 4,
   },
   mapAddressText: {
+    flex: 1,
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 12,
-    color: TEXT_DARK,
+    color: WHITE,
+    marginLeft: 6,
+  },
+  mapEtaBadge: {
+    position: 'absolute',
+    bottom: 10,
+    left: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: GREEN_TINT,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  mapEtaText: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 11,
+    color: GREEN_DARK,
+    marginLeft: 5,
   },
   mapAttribution: {
     position: 'absolute',
@@ -568,12 +676,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 13,
+    overflow: 'hidden',
   },
   mapFooterText: {
     flex: 1,
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 13,
-    color: PURPLE_DARK,
+    color: WHITE,
     marginLeft: 10,
   },
   timelineCard: {
@@ -591,34 +700,26 @@ const styles = StyleSheet.create({
   },
   timelineRail: {
     alignItems: 'center',
-    width: 30,
+    width: 34,
     marginRight: 12,
   },
   timelineDot: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 34,
+    height: 34,
+    borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#D5DCE3',
-    backgroundColor: WHITE,
+    backgroundColor: '#F1F4F8',
+    borderColor: '#E1E7EC',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  timelineDotReached: {
-    backgroundColor: PURPLE_DARK,
-    borderColor: PURPLE_DARK,
-  },
-  timelineDotCurrent: {
-    backgroundColor: PURPLE_TINT,
-    borderColor: PURPLE_MID,
-  },
   timelineLine: {
     width: 2,
-    height: 34,
+    height: 32,
     backgroundColor: '#E1E7EC',
   },
   timelineLineReached: {
-    backgroundColor: PURPLE_MID,
+    backgroundColor: GREEN,
   },
   timelineBody: {
     flex: 1,
@@ -635,12 +736,12 @@ const styles = StyleSheet.create({
   },
   timelineLabelCurrent: {
     fontFamily: 'Poppins_600SemiBold',
-    color: PURPLE_DARK,
+    color: TEAL_DARK,
   },
   timelineHint: {
     fontFamily: 'Poppins_400Regular',
     fontSize: 11,
-    color: GOLD,
+    color: AMBER,
     marginTop: 2,
   },
   driverCard: {
@@ -656,14 +757,15 @@ const styles = StyleSheet.create({
   driverAvatar: {
     width: 48,
     height: 48,
-    borderRadius: 24,
+    borderRadius: 16,
+    backgroundColor: TEAL_TINT,
     justifyContent: 'center',
     alignItems: 'center',
   },
   driverAvatarText: {
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 18,
-    color: WHITE,
+    color: TEAL_DARK,
   },
   driverBody: {
     flex: 1,
@@ -686,23 +788,32 @@ const styles = StyleSheet.create({
     color: TEXT_MUTED,
     marginTop: 1,
   },
-  callButton: {
-    width: 44,
-    height: 44,
+  callButtonWrap: {
     borderRadius: 22,
-    backgroundColor: GOLD,
-    justifyContent: 'center',
-    alignItems: 'center',
     elevation: 2,
-    shadowColor: GOLD,
+    shadowColor: GREEN,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
   },
+  callButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 22,
+    overflow: 'hidden',
+  },
+  callButtonText: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 13,
+    color: WHITE,
+    marginLeft: 6,
+  },
   etaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F3EFFB',
+    backgroundColor: WHITE,
     borderRadius: 18,
     borderWidth: 1,
     borderColor: BORDER,
@@ -713,7 +824,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 14,
-    backgroundColor: PURPLE_TINT,
+    backgroundColor: AMBER_TINT,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -763,6 +874,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
     paddingBottom: 80,
   },
+  emptyIconWrap: {
+    width: 92,
+    height: 92,
+    borderRadius: 46,
+    backgroundColor: BLUE_TINT,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   emptyTitle: {
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 17,
@@ -784,6 +903,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 14,
     borderRadius: 16,
+    overflow: 'hidden',
   },
   emptyButtonText: {
     fontFamily: 'Poppins_600SemiBold',

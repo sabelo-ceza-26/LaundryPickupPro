@@ -1,7 +1,7 @@
 export function formatBookingDate(date: Date): string {
   return date.toLocaleDateString('en-US', {
     weekday: 'short',
-    month: 'long',
+    month: 'short',
     day: 'numeric',
   });
 }

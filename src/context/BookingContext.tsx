@@ -14,6 +14,7 @@ export type Booking = {
   deliveryDate: Date;
   deliveryTime: Date;
   instructions: string;
+  paymentMethod: 'Card' | 'EFT' | 'Cash';
   total: number;
 };
 
@@ -36,13 +37,14 @@ const tomorrow = () => {
 };
 
 const defaultBooking: Booking = {
-  pickupAddress: '172 Sir Lowry Rd, Woodstock',
-  deliveryAddress: '123 Main Road, Cape Town',
+  pickupAddress: '',
+  deliveryAddress: '',
   pickupDate: new Date(),
   pickupTime: at(9),
   deliveryDate: tomorrow(),
   deliveryTime: at(14),
   instructions: '',
+  paymentMethod: 'Card',
   total: 124.5,
 };
 

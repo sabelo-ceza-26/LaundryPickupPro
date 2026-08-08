@@ -28,11 +28,12 @@ import { formatBookingDate, formatMoney, formatTimeWindow } from '../../utils/fo
 type Props = NativeStackScreenProps<BookingStackParamList, 'Success'>;
 
 const TEAL = '#0F363F';
-const TEAL_MID = '#1E5660';
 const TEXT_DARK = '#1F2933';
 const TEXT_MUTED = '#7A869A';
 
-const GRADIENT_TEAL = [TEAL_MID, TEAL] as const;
+const GRADIENT_CHECK = ['#17879B', '#0E5E73'] as const;
+const GRADIENT_SUMMARY = ['#17879B', '#0E5E73'] as const;
+const GRADIENT_NEXT = ['#17879B', '#0E5E73'] as const;
 
 export default function BookingSuccessScreen({ navigation }: Props) {
   const { booking, resetBooking } = useBooking();
@@ -68,10 +69,10 @@ export default function BookingSuccessScreen({ navigation }: Props) {
       deliveryWindow: `${formatBookingDate(booking.deliveryDate)} · ${formatTimeWindow(booking.deliveryTime)}`,
       driver: undefined,
       driverPhone: undefined,
-      items: [{ name: 'Standard Bag', quantity: 1, price: booking.total }],
+      items: [{ name: 'Wash & Fold (per kg)', quantity: 1, price: booking.total }],
       deliveryFee: 0,
       total: booking.total,
-      paymentMethod: 'Card',
+      paymentMethod: booking.paymentMethod,
       instructions: booking.instructions,
     });
     resetBooking();
@@ -88,9 +89,9 @@ export default function BookingSuccessScreen({ navigation }: Props) {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.hero}>
-          <View style={styles.checkCircle}>
+          <LinearGradient colors={GRADIENT_CHECK} style={styles.checkCircle}>
             <MaterialCommunityIcons name="check" size={44} color={colors.white} />
-          </View>
+          </LinearGradient>
           <Text style={styles.title}>Booking Confirmed!</Text>
           <Text style={styles.subtitle}>
             Your laundry pickup has been scheduled successfully.
@@ -98,11 +99,16 @@ export default function BookingSuccessScreen({ navigation }: Props) {
         </View>
 
         <View style={styles.referenceChip}>
-          <Text style={styles.referenceLabel}>Booking reference</Text>
-          <Text style={styles.referenceValue}>{reference}</Text>
+          <View style={styles.referenceIcon}>
+            <MaterialCommunityIcons name="barcode-scan" size={18} color="#0E9AA7" />
+          </View>
+          <View style={styles.referenceBody}>
+            <Text style={styles.referenceLabel}>Booking reference</Text>
+            <Text style={styles.referenceValue}>{reference}</Text>
+          </View>
         </View>
 
-        <LinearGradient colors={GRADIENT_TEAL} style={styles.summaryCard}>
+        <LinearGradient colors={GRADIENT_SUMMARY} style={styles.summaryCard}>
           <View style={styles.summaryHeader}>
             <MaterialCommunityIcons name="basket-outline" size={20} color={colors.white} />
             <Text style={styles.summaryHeaderText}>Pickup &amp; Drop Off</Text>
@@ -112,7 +118,7 @@ export default function BookingSuccessScreen({ navigation }: Props) {
             <Text style={styles.summaryValue}>{booking.pickupAddress}</Text>
           </View>
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>When</Text>
+            <Text style={styles.summaryLabel}>Pickup time</Text>
             <Text style={styles.summaryValue}>
               {formatBookingDate(booking.pickupDate)} ·{' '}
               {formatTimeWindow(booking.pickupTime)}
@@ -122,6 +128,23 @@ export default function BookingSuccessScreen({ navigation }: Props) {
             <Text style={styles.summaryLabel}>Delivery</Text>
             <Text style={styles.summaryValue}>{booking.deliveryAddress}</Text>
           </View>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Delivery time</Text>
+            <Text style={styles.summaryValue}>
+              {formatBookingDate(booking.deliveryDate)} ·{' '}
+              {formatTimeWindow(booking.deliveryTime)}
+            </Text>
+          </View>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Payment</Text>
+            <Text style={styles.summaryValue}>{booking.paymentMethod}</Text>
+          </View>
+          {!!booking.instructions && (
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Notes</Text>
+              <Text style={styles.summaryValue}>{booking.instructions}</Text>
+            </View>
+          )}
           <View style={styles.summaryDivider} />
           <View style={styles.summaryTotalRow}>
             <Text style={styles.summaryTotalLabel}>Total</Text>
@@ -132,25 +155,30 @@ export default function BookingSuccessScreen({ navigation }: Props) {
         </LinearGradient>
 
         <View style={styles.infoRow}>
-          <MaterialCommunityIcons name="email-outline" size={18} color={TEAL} />
+          <MaterialCommunityIcons name="email-outline" size={18} color="#0E9AA7" />
           <Text style={styles.infoText}>
             A confirmation email with these details has been sent to you.
           </Text>
         </View>
-      </ScrollView>
 
-      <View style={styles.footer}>
         <TouchableOpacity
           style={styles.doneButtonTouch}
           activeOpacity={0.9}
           onPress={handleDone}
         >
-          <LinearGradient colors={GRADIENT_TEAL} style={styles.doneButton}>
+          <LinearGradient colors={GRADIENT_NEXT} style={styles.doneButton}>
+            <MaterialCommunityIcons
+              name="rocket-launch-outline"
+              size={18}
+              color={colors.white}
+              style={styles.doneButtonIcon}
+            />
             <Text style={styles.doneButtonText}>Done</Text>
             <MaterialCommunityIcons name="check" size={18} color={colors.white} />
+            <View style={styles.doneButtonShine} />
           </LinearGradient>
         </TouchableOpacity>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -166,7 +194,7 @@ const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 20,
     paddingTop: 32,
-    paddingBottom: 110,
+    paddingBottom: 24,
   },
   hero: {
     alignItems: 'center',
@@ -176,11 +204,10 @@ const styles = StyleSheet.create({
     width: 92,
     height: 92,
     borderRadius: 46,
-    backgroundColor: TEAL,
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 6,
-    shadowColor: TEAL,
+    shadowColor: '#0E5E73',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
     shadowRadius: 14,
@@ -189,7 +216,7 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: 'Poppins_700Bold',
     fontSize: 24,
-    color: TEXT_DARK,
+    color: TEAL,
     textAlign: 'center',
   },
   subtitle: {
@@ -201,6 +228,8 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   referenceChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
     alignSelf: 'center',
     backgroundColor: colors.white,
     borderRadius: 20,
@@ -208,8 +237,19 @@ const styles = StyleSheet.create({
     borderColor: '#E8ECF1',
     paddingHorizontal: 18,
     paddingVertical: 10,
-    alignItems: 'center',
     marginBottom: 22,
+  },
+  referenceIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: '#D6F0F4',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  referenceBody: {
+    alignItems: 'flex-start',
   },
   referenceLabel: {
     fontFamily: 'Poppins_400Regular',
@@ -221,16 +261,16 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_700Bold',
     fontSize: 16,
     color: TEAL,
-    marginTop: 2,
     letterSpacing: 1,
+    marginTop: 1,
   },
   summaryCard: {
     borderRadius: 20,
     padding: 18,
     elevation: 4,
-    shadowColor: TEAL,
+    shadowColor: '#0E5E73',
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.22,
     shadowRadius: 12,
   },
   summaryHeader: {
@@ -300,20 +340,9 @@ const styles = StyleSheet.create({
     color: '#4A5C64',
     marginLeft: 10,
   },
-  footer: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: colors.background,
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#E8ECF1',
-  },
   doneButtonTouch: {
     borderRadius: 18,
+    marginTop: 24,
   },
   doneButton: {
     flexDirection: 'row',
@@ -321,11 +350,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     height: 58,
     borderRadius: 18,
+    overflow: 'hidden',
     elevation: 4,
-    shadowColor: TEAL,
+    shadowColor: '#0E5E73',
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.3,
     shadowRadius: 10,
+  },
+  doneButtonIcon: {
+    marginRight: 8,
+  },
+  doneButtonShine: {
+    position: 'absolute',
+    top: -30,
+    left: -30,
+    width: 90,
+    height: 120,
+    borderRadius: 45,
+    backgroundColor: 'rgba(255, 255, 255, 0.14)',
+    transform: [{ rotate: '20deg' }],
   },
   doneButtonText: {
     fontFamily: 'Poppins_600SemiBold',

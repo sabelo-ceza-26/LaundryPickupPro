@@ -17,11 +17,6 @@ export default function BookingProgress({ current, title }: Props) {
     <>
       <View style={styles.progressHeader}>
         <Text style={styles.progressLabel}>{title}</Text>
-        <View style={styles.progressChip}>
-          <Text style={styles.progressChipText}>
-            Step {current} of {STEPS.length}
-          </Text>
-        </View>
       </View>
 
       <View style={styles.progressBar}>
@@ -92,17 +87,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 15,
     color: TEXT_DARK,
-  },
-  progressChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 20,
-    backgroundColor: TEAL,
-  },
-  progressChipText: {
-    fontFamily: 'Poppins_500Medium',
-    fontSize: 11,
-    color: '#FFFFFF',
   },
   progressBar: {
     flexDirection: 'row',

@@ -29,7 +29,7 @@ const BORDER = '#E8ECF1';
 
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
-const TIME_SLOTS = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
+const TIME_SLOTS = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22];
 
 function isSameDay(a: Date, b: Date): boolean {
   return (

@@ -1,12 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
-  Alert,
+  Modal,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import FancyAlert from '../../components/FancyAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -44,17 +46,11 @@ type QuickAction = {
   tint: string;
   color: string;
   compact?: boolean;
+  opensRating?: boolean;
   onPress: (navigation: CustomerTabNavigation, activeOrder?: CustomerOrder) => void;
 };
 
 const quickActions: QuickAction[] = [
-  {
-    title: 'My Orders',
-    icon: 'package-variant-closed',
-    tint: '#E4EEFF',
-    color: '#2E6BFF',
-    onPress: (navigation) => navigation.navigate('Orders'),
-  },
   {
     title: 'Track Order',
     icon: 'map-marker-outline',
@@ -66,19 +62,19 @@ const quickActions: QuickAction[] = [
         : navigation.navigate('Track'),
   },
   {
+    title: 'Order History',
+    icon: 'history',
+    tint: '#EAE6FF',
+    color: '#5B48F7',
+    onPress: (navigation) => navigation.navigate('Orders'),
+  },
+  {
     title: 'Notifications',
     icon: 'bell-outline',
     tint: '#FFF0B8',
     color: '#E8960C',
     compact: true,
     onPress: (navigation) => navigation.navigate('Notifications'),
-  },
-  {
-    title: 'Order History',
-    icon: 'history',
-    tint: '#EAE6FF',
-    color: '#5B48F7',
-    onPress: (navigation) => navigation.navigate('Orders'),
   },
   {
     title: 'Addresses',
@@ -94,12 +90,24 @@ const quickActions: QuickAction[] = [
     color: '#EC5E9B',
     onPress: (navigation) => navigation.navigate('Support'),
   },
+  {
+    title: 'Rate the App',
+    icon: 'star-outline',
+    tint: '#E4EEFF',
+    color: '#2E6BFF',
+    opensRating: true,
+    onPress: () => {},
+  },
 ];
 
 export default function CustomerHomeScreen() {
   const { user, signOut } = useAuth();
   const { orders } = useOrders();
   const navigation = useNavigation<CustomerTabNavigation>();
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [ratingVisible, setRatingVisible] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [ratingThanksVisible, setRatingThanksVisible] = useState(false);
   const [fontsLoaded] = useFonts({
     Poppins_400Regular,
     Poppins_500Medium,
@@ -112,19 +120,32 @@ export default function CustomerHomeScreen() {
   const activeOrder = orders.find((order) => isOrderActive(order.status));
   const userName = user?.name ?? 'Matthew';
 
-  const openMenu = () => {
-    Alert.alert('Menu', 'What would you like to do?', [
-      {
-        text: 'My Account',
-        style: 'cancel',
-        onPress: () => navigation.navigate('Profile'),
-      },
-      {
-        text: 'Settings',
-        onPress: () => navigation.navigate('Settings'),
-      },
-      { text: 'Log out', style: 'destructive', onPress: signOut },
-    ]);
+  const goProfile = () => {
+    setMenuVisible(false);
+    navigation.navigate('Profile');
+  };
+
+  const goSettings = () => {
+    setMenuVisible(false);
+    navigation.navigate('Settings');
+  };
+
+  const goLogout = () => {
+    setMenuVisible(false);
+    signOut();
+  };
+
+  const shareReferral = async () => {
+    try {
+      await Share.share({
+        message:
+          'Hey! I use Laundry Pickup Pro for laundry pickup & delivery. ' +
+          `Use my referral code ${(user?.name ?? 'MATT').toUpperCase().slice(0, 5)}50 ` +
+          'to get R50 off your first order. Download: https://laundrypickuppro.app',
+      });
+    } catch {
+      // sharing dismissed
+    }
   };
 
   return (
@@ -139,7 +160,7 @@ export default function CustomerHomeScreen() {
           <View style={styles.decorCircleTwo} />
 
           <View style={styles.topBar}>
-            <TouchableOpacity style={styles.avatar} onPress={openMenu}>
+            <TouchableOpacity style={styles.avatar} onPress={() => setMenuVisible(true)}>
               <Text style={styles.avatarText}>
                 {(user?.name ?? 'Matthew').charAt(0).toUpperCase()}
               </Text>
@@ -185,7 +206,14 @@ export default function CustomerHomeScreen() {
                 key={action.title}
                 style={[styles.gridCard, action.compact && styles.gridCardCompact]}
                 activeOpacity={0.85}
-                onPress={() => action.onPress(navigation, activeOrder)}
+                onPress={() => {
+                  if (action.opensRating) {
+                    setRating(0);
+                    setRatingVisible(true);
+                  } else {
+                    action.onPress(navigation, activeOrder);
+                  }
+                }}
               >
                 <View
                   style={[
@@ -209,22 +237,179 @@ export default function CustomerHomeScreen() {
             ))}
           </View>
 
-          <LinearGradient colors={GRADIENT_REFER} style={styles.referralBanner}>
-            <View style={styles.referralIcon}>
-              <MaterialCommunityIcons name="gift-outline" size={24} color="#C77700" />
-            </View>
-            <View style={styles.referralText}>
-              <Text style={styles.referralTitle}>Refer a friend</Text>
-              <Text style={styles.referralSubtitle}>
-                Get R50 off your next order!
-              </Text>
-            </View>
-            <View style={styles.referralArrow}>
-              <MaterialCommunityIcons name="chevron-right" size={22} color="#C77700" />
-            </View>
-          </LinearGradient>
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={shareReferral}
+          >
+            <LinearGradient colors={GRADIENT_REFER} style={styles.referralBanner}>
+              <View style={styles.referralIcon}>
+                <MaterialCommunityIcons name="gift-outline" size={24} color="#C77700" />
+              </View>
+              <View style={styles.referralText}>
+                <Text style={styles.referralTitle}>Refer a friend</Text>
+                <Text style={styles.referralSubtitle}>
+                  Get R50 off your next order!
+                </Text>
+              </View>
+              <View style={styles.referralArrow}>
+                <MaterialCommunityIcons name="share-variant" size={18} color="#C77700" />
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
         </View>
       </ScrollView>
+
+      <Modal
+        visible={menuVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setMenuVisible(false)}
+      >
+        <View style={styles.menuBackdrop}>
+          <TouchableOpacity
+            style={styles.menuBackdropTouch}
+            activeOpacity={1}
+            onPress={() => setMenuVisible(false)}
+          />
+          <View style={styles.menuSheet}>
+            <View style={styles.menuHandle} />
+            <LinearGradient colors={GRADIENT_HEADER} style={styles.menuHeader}>
+              <View style={styles.menuAvatar}>
+                <Text style={styles.menuAvatarText}>
+                  {(user?.name ?? 'Matthew').charAt(0).toUpperCase()}
+                </Text>
+              </View>
+              <View style={styles.menuHeaderText}>
+                <Text style={styles.menuHeaderTitle}>Hey, {userName}!</Text>
+                <Text style={styles.menuHeaderSubtitle}>
+                  What would you like to do?
+                </Text>
+              </View>
+            </LinearGradient>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={goProfile}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.menuIcon, { backgroundColor: '#E4EEFF' }]}>
+                <MaterialCommunityIcons name="account-outline" size={22} color="#2E6BFF" />
+              </View>
+              <View style={styles.menuText}>
+                <Text style={styles.menuTitle}>My Account</Text>
+                <Text style={styles.menuDesc}>View your profile and details</Text>
+              </View>
+              <MaterialCommunityIcons name="chevron-right" size={22} color="#C3CDD7" />
+            </TouchableOpacity>
+
+            <View style={styles.menuDivider} />
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={goSettings}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.menuIcon, { backgroundColor: '#D6F0F4' }]}>
+                <MaterialCommunityIcons name="cog-outline" size={22} color="#0E9AA7" />
+              </View>
+              <View style={styles.menuText}>
+                <Text style={styles.menuTitle}>Settings</Text>
+                <Text style={styles.menuDesc}>Preferences, notifications and more</Text>
+              </View>
+              <MaterialCommunityIcons name="chevron-right" size={22} color="#C3CDD7" />
+            </TouchableOpacity>
+
+            <View style={styles.menuDivider} />
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={goLogout}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.menuIcon, { backgroundColor: '#FDE7E8' }]}>
+                <MaterialCommunityIcons name="logout" size={22} color="#E5484D" />
+              </View>
+              <View style={styles.menuText}>
+                <Text style={[styles.menuTitle, { color: '#E5484D' }]}>Log out</Text>
+                <Text style={styles.menuDesc}>Sign out of your account</Text>
+              </View>
+              <MaterialCommunityIcons name="chevron-right" size={22} color="#C3CDD7" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={ratingVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setRatingVisible(false)}
+      >
+        <View style={styles.ratingOverlay}>
+          <View style={styles.ratingCard}>
+            <View style={styles.ratingIcon}>
+              <MaterialCommunityIcons name="star-outline" size={32} color="#E8960C" />
+            </View>
+            <Text style={styles.ratingTitle}>Love Laundry Pickup Pro?</Text>
+            <Text style={styles.ratingSubtitle}>
+              Tap a star to rate your experience.
+            </Text>
+
+            <View style={styles.starsRow}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <TouchableOpacity
+                  key={star}
+                  activeOpacity={0.7}
+                  onPress={() => setRating(star)}
+                >
+                  <MaterialCommunityIcons
+                    name={star <= rating ? 'star' : 'star-outline'}
+                    size={40}
+                    color={star <= rating ? '#F5A623' : '#D4DBE3'}
+                  />
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={styles.ratingHint}>
+              {rating === 0
+                ? 'Your feedback helps us improve'
+                : rating >= 4
+                  ? 'Thank you! We appreciate it.'
+                  : 'Thanks for being honest.'}
+            </Text>
+
+            <TouchableOpacity
+              style={styles.ratingSubmitTouch}
+              activeOpacity={0.85}
+              onPress={() => {
+                setRatingVisible(false);
+                setRatingThanksVisible(true);
+              }}
+            >
+              <LinearGradient colors={GRADIENT_HEADER} style={styles.ratingSubmit}>
+                <Text style={styles.ratingSubmitText}>Submit rating</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.ratingCancel}
+              onPress={() => setRatingVisible(false)}
+            >
+              <Text style={styles.ratingCancelText}>Not now</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <FancyAlert
+        visible={ratingThanksVisible}
+        icon="star-circle"
+        iconColor="#E8960C"
+        iconBackground="#FFF0B8"
+        title="Thank you!"
+        message="Your rating helps us keep improving the Laundry Pickup Pro experience."
+        onClose={() => setRatingThanksVisible(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -471,5 +656,189 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.65)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  menuBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(18, 38, 58, 0.55)',
+    justifyContent: 'flex-end',
+  },
+  menuBackdropTouch: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  menuSheet: {
+    backgroundColor: WHITE,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 20,
+    paddingBottom: 30,
+    shadowColor: '#0F363F',
+    shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 18,
+    elevation: 16,
+  },
+  menuHandle: {
+    alignSelf: 'center',
+    width: 44,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: '#D8DFE6',
+    marginTop: 10,
+    marginBottom: 14,
+  },
+  menuHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    marginBottom: 6,
+  },
+  menuAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  menuAvatarText: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 20,
+    color: WHITE,
+  },
+  menuHeaderText: {
+    flex: 1,
+  },
+  menuHeaderTitle: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 16,
+    color: WHITE,
+  },
+  menuHeaderSubtitle: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.82)',
+    marginTop: 1,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderRadius: 16,
+  },
+  menuIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 13,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  menuText: {
+    flex: 1,
+  },
+  menuTitle: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 15,
+    color: TEXT_DARK,
+  },
+  menuDesc: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 12,
+    color: TEXT_MUTED,
+    marginTop: 1,
+  },
+  menuDivider: {
+    height: 1,
+    backgroundColor: '#EEF1F5',
+    marginVertical: 2,
+  },
+  ratingOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(18, 38, 58, 0.55)',
+    justifyContent: 'center',
+    paddingHorizontal: 30,
+  },
+  ratingCard: {
+    backgroundColor: WHITE,
+    borderRadius: 24,
+    paddingHorizontal: 22,
+    paddingVertical: 26,
+    alignItems: 'center',
+    elevation: 14,
+    shadowColor: '#0F363F',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+  },
+  ratingIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#FFF0B8',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  ratingTitle: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 18,
+    color: TEXT_DARK,
+    textAlign: 'center',
+  },
+  ratingSubtitle: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 13,
+    color: TEXT_MUTED,
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  starsRow: {
+    flexDirection: 'row',
+    marginTop: 18,
+  },
+  ratingHint: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 12,
+    color: TEXT_MUTED,
+    marginTop: 12,
+  },
+  ratingSubmitTouch: {
+    alignSelf: 'stretch',
+    borderRadius: 15,
+    marginTop: 20,
+  },
+  ratingSubmit: {
+    height: 50,
+    borderRadius: 15,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 3,
+    shadowColor: '#0E9F6E',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+  },
+  ratingSubmitText: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 15,
+    color: WHITE,
+  },
+  ratingCancel: {
+    marginTop: 12,
+    paddingVertical: 6,
+  },
+  ratingCancelText: {
+    fontFamily: 'Poppins_500Medium',
+    fontSize: 14,
+    color: TEXT_MUTED,
   },
 });

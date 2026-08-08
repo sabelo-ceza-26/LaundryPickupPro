@@ -23,11 +23,11 @@ import {
 
 import type { AdminStackParamList } from '../../navigation/AdminNavigator';
 import { useAdmin } from '../../context/AdminContext';
-import type { AdminCustomer } from '../../context/AdminContext';
+import type { AdminDriver } from '../../context/AdminContext';
 import FancyAlert from '../../components/FancyAlert';
-import { isEmail, isPhone, isRequired } from '../../utils/validation';
+import { isPhone, isRequired } from '../../utils/validation';
 
-type Props = NativeStackScreenProps<AdminStackParamList, 'Users'>;
+type Props = NativeStackScreenProps<AdminStackParamList, 'Drivers'>;
 
 const BLUE = '#2E6BFF';
 const BLUE_TINT = '#E4EEFF';
@@ -47,6 +47,9 @@ const DANGER = '#E5484D';
 
 const GRADIENT_VIBRANT = [BLUE, PURPLE] as const;
 const GRADIENT_RED = ['#FF7A70', '#E5484D'] as const;
+
+const SERVICE_AREAS = ['Woodstock', 'Observatory', 'Maitland'] as const;
+type ServiceArea = (typeof SERVICE_AREAS)[number];
 
 const AVATAR_PALETTE = [
   { badgeColor: '#E8F2FF', initialsColor: '#3678E5' },
@@ -74,42 +77,55 @@ function joinedStamp(): string {
 
 type FormModalProps = {
   visible: boolean;
-  customer: AdminCustomer | null;
+  driver: AdminDriver | null;
   onClose: () => void;
   onSave: (draft: {
     name: string;
-    email: string;
     phone: string;
+    vehicle: string;
+    registration: string;
+    area: ServiceArea;
   }) => void;
 };
 
-function CustomerFormModal({
+function DriverFormModal({
   visible,
-  customer,
+  driver,
   onClose,
   onSave,
 }: FormModalProps) {
-  const [name, setName] = useState(customer?.name ?? '');
-  const [email, setEmail] = useState(customer?.email ?? '');
-  const [phone, setPhone] = useState(customer?.phone ?? '');
+  const [name, setName] = useState(driver?.name ?? '');
+  const [phone, setPhone] = useState(driver?.phone ?? '');
+  const [vehicle, setVehicle] = useState(driver?.vehicle ?? '');
+  const [registration, setRegistration] = useState(driver?.registration ?? '');
+  const [area, setArea] = useState<ServiceArea>(driver?.area ?? 'Woodstock');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const handleOpen = () => {
-    setName(customer?.name ?? '');
-    setEmail(customer?.email ?? '');
-    setPhone(customer?.phone ?? '');
+    setName(driver?.name ?? '');
+    setPhone(driver?.phone ?? '');
+    setVehicle(driver?.vehicle ?? '');
+    setRegistration(driver?.registration ?? '');
+    setArea(driver?.area ?? 'Woodstock');
     setErrors({});
   };
 
   const handleSave = () => {
     const next: Record<string, string> = {};
-    if (!isRequired(name)) next.name = 'Enter the customer name';
-    if (!isEmail(email)) next.email = 'Enter a valid email address';
+    if (!isRequired(name)) next.name = 'Enter the driver name';
     if (!isPhone(phone)) next.phone = 'Enter a valid phone number';
+    if (!isRequired(vehicle)) next.vehicle = 'Enter the vehicle';
+    if (!isRequired(registration)) next.registration = 'Enter the number plate';
     setErrors(next);
     if (Object.keys(next).length > 0) return;
 
-    onSave({ name: name.trim(), email: email.trim(), phone: phone.trim() });
+    onSave({
+      name: name.trim(),
+      phone: phone.trim(),
+      vehicle: vehicle.trim(),
+      registration: registration.trim().toUpperCase(),
+      area,
+    });
   };
 
   return (
@@ -133,7 +149,7 @@ function CustomerFormModal({
         <View style={styles.formCard}>
           <View style={styles.formHeader}>
             <Text style={styles.formTitle}>
-              {customer ? 'Edit Customer' : 'Add Customer'}
+              {driver ? 'Edit Driver' : 'Add Driver'}
             </Text>
             <TouchableOpacity style={styles.formClose} onPress={onClose}>
               <MaterialCommunityIcons name="close" size={20} color={TEXT_MUTED} />
@@ -142,32 +158,17 @@ function CustomerFormModal({
 
           <Text style={styles.formLabel}>Full name</Text>
           <View style={[styles.formInputField, errors.name && styles.formInputError]}>
-            <MaterialCommunityIcons name="account-outline" size={18} color={TEXT_MUTED} />
+            <MaterialCommunityIcons name="account-tie-outline" size={18} color={TEXT_MUTED} />
             <TextInput
               style={styles.formInput}
               value={name}
               onChangeText={setName}
-              placeholder="Customer name"
+              placeholder="Driver name"
               placeholderTextColor={TEXT_MUTED}
               autoCapitalize="words"
             />
           </View>
           {errors.name && <Text style={styles.formErrorText}>{errors.name}</Text>}
-
-          <Text style={styles.formLabel}>Email address</Text>
-          <View style={[styles.formInputField, errors.email && styles.formInputError]}>
-            <MaterialCommunityIcons name="email-outline" size={18} color={TEXT_MUTED} />
-            <TextInput
-              style={styles.formInput}
-              value={email}
-              onChangeText={setEmail}
-              placeholder="customer@example.com"
-              placeholderTextColor={TEXT_MUTED}
-              autoCapitalize="none"
-              keyboardType="email-address"
-            />
-          </View>
-          {errors.email && <Text style={styles.formErrorText}>{errors.email}</Text>}
 
           <Text style={styles.formLabel}>Phone number</Text>
           <View style={[styles.formInputField, errors.phone && styles.formInputError]}>
@@ -183,10 +184,65 @@ function CustomerFormModal({
           </View>
           {errors.phone && <Text style={styles.formErrorText}>{errors.phone}</Text>}
 
+          <Text style={styles.formLabel}>Vehicle</Text>
+          <View style={[styles.formInputField, errors.vehicle && styles.formInputError]}>
+            <MaterialCommunityIcons name="car-outline" size={18} color={TEXT_MUTED} />
+            <TextInput
+              style={styles.formInput}
+              value={vehicle}
+              onChangeText={setVehicle}
+              placeholder="e.g. White Toyota Bakkie"
+              placeholderTextColor={TEXT_MUTED}
+              autoCapitalize="words"
+            />
+          </View>
+          {errors.vehicle && <Text style={styles.formErrorText}>{errors.vehicle}</Text>}
+
+          <Text style={styles.formLabel}>Number plate</Text>
+          <View style={[styles.formInputField, errors.registration && styles.formInputError]}>
+            <MaterialCommunityIcons name="credit-card-scan-outline" size={18} color={TEXT_MUTED} />
+            <TextInput
+              style={styles.formInput}
+              value={registration}
+              onChangeText={setRegistration}
+              placeholder="e.g. CA 482-113"
+              placeholderTextColor={TEXT_MUTED}
+              autoCapitalize="characters"
+            />
+          </View>
+          {errors.registration && <Text style={styles.formErrorText}>{errors.registration}</Text>}
+
+          <Text style={styles.formLabel}>Service area</Text>
+          <View style={styles.areaWrap}>
+            {SERVICE_AREAS.map((option) => {
+              const selected = area === option;
+              return (
+                <TouchableOpacity
+                  key={option}
+                  style={[styles.areaChip, selected && styles.areaChipActive]}
+                  activeOpacity={0.85}
+                  onPress={() => setArea(option)}
+                >
+                  {selected ? (
+                    <LinearGradient colors={GRADIENT_VIBRANT} style={styles.areaChipGradient}>
+                      <MaterialCommunityIcons name="check" size={14} color={WHITE} />
+                      <Text style={styles.areaChipTextActive}>{option}</Text>
+                    </LinearGradient>
+                  ) : (
+                    <View style={styles.areaChipInner}>
+                      <MaterialCommunityIcons name="map-marker-radius-outline" size={14} color={BLUE} />
+                      <Text style={styles.areaChipText}>{option}</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
           <TouchableOpacity style={styles.formSaveTouch} activeOpacity={0.9} onPress={handleSave}>
             <LinearGradient colors={GRADIENT_VIBRANT} style={styles.formSave}>
               <Text style={styles.formSaveText}>
-                {customer ? 'Save Changes' : 'Add Customer'}
+                {driver ? 'Save Changes' : 'Add Driver'}
               </Text>
             </LinearGradient>
           </TouchableOpacity>
@@ -198,20 +254,20 @@ function CustomerFormModal({
 
 type DetailModalProps = {
   visible: boolean;
-  customer: AdminCustomer | null;
+  driver: AdminDriver | null;
   onClose: () => void;
   onEdit: () => void;
   onDelete: () => void;
 };
 
-function CustomerDetailModal({
+function DriverDetailModal({
   visible,
-  customer,
+  driver,
   onClose,
   onEdit,
   onDelete,
 }: DetailModalProps) {
-  if (!customer) return null;
+  if (!driver) return null;
 
   return (
     <Modal
@@ -229,44 +285,60 @@ function CustomerDetailModal({
           <View
             style={[
               styles.detailAvatar,
-              { backgroundColor: customer.badgeColor },
+              { backgroundColor: driver.badgeColor },
             ]}
           >
-            <Text style={[styles.detailAvatarText, { color: customer.initialsColor }]}>
-              {customer.initials}
+            <Text style={[styles.detailAvatarText, { color: driver.initialsColor }]}>
+              {driver.initials}
             </Text>
           </View>
-          <Text style={styles.detailName}>{customer.name}</Text>
-          <Text style={styles.detailJoined}>{customer.joinedDate}</Text>
+          <Text style={styles.detailName}>{driver.name}</Text>
+          <Text style={styles.detailJoined}>{driver.joinedDate}</Text>
 
           <View style={styles.detailInfoCard}>
             <View style={styles.detailInfoRow}>
               <View style={[styles.detailInfoIcon, { backgroundColor: BLUE_TINT }]}>
-                <MaterialCommunityIcons name="email-outline" size={17} color={BLUE} />
+                <MaterialCommunityIcons name="phone-outline" size={17} color={BLUE} />
               </View>
               <View style={styles.detailInfoBody}>
-                <Text style={styles.detailInfoLabel}>Email</Text>
-                <Text style={styles.detailInfoValue}>{customer.email}</Text>
+                <Text style={styles.detailInfoLabel}>Phone</Text>
+                <Text style={styles.detailInfoValue}>{driver.phone}</Text>
               </View>
             </View>
             <View style={styles.detailInfoRow}>
               <View style={[styles.detailInfoIcon, { backgroundColor: GREEN_TINT }]}>
-                <MaterialCommunityIcons name="phone-outline" size={17} color={GREEN} />
+                <MaterialCommunityIcons name="car-outline" size={17} color={GREEN} />
               </View>
               <View style={styles.detailInfoBody}>
-                <Text style={styles.detailInfoLabel}>Phone</Text>
-                <Text style={styles.detailInfoValue}>{customer.phone}</Text>
+                <Text style={styles.detailInfoLabel}>Vehicle</Text>
+                <Text style={styles.detailInfoValue}>{driver.vehicle}</Text>
+              </View>
+            </View>
+            <View style={styles.detailInfoRow}>
+              <View style={[styles.detailInfoIcon, { backgroundColor: AMBER_TINT }]}>
+                <MaterialCommunityIcons name="credit-card-scan-outline" size={17} color={AMBER} />
+              </View>
+              <View style={styles.detailInfoBody}>
+                <Text style={styles.detailInfoLabel}>Number plate</Text>
+                <Text style={styles.detailInfoValue}>{driver.registration}</Text>
               </View>
             </View>
             <View style={styles.detailInfoRow}>
               <View style={[styles.detailInfoIcon, { backgroundColor: PURPLE_TINT }]}>
-                <MaterialCommunityIcons name="receipt-text-outline" size={17} color={PURPLE} />
+                <MaterialCommunityIcons name="map-marker-radius-outline" size={17} color={PURPLE} />
               </View>
               <View style={styles.detailInfoBody}>
-                <Text style={styles.detailInfoLabel}>Orders</Text>
-                <Text style={styles.detailInfoValue}>
-                  {customer.totalOrders} orders placed
-                </Text>
+                <Text style={styles.detailInfoLabel}>Service area</Text>
+                <Text style={styles.detailInfoValue}>{driver.area}</Text>
+              </View>
+            </View>
+            <View style={styles.detailInfoRow}>
+              <View style={[styles.detailInfoIcon, { backgroundColor: TEAL_TINT }]}>
+                <MaterialCommunityIcons name="truck-outline" size={17} color={TEAL} />
+              </View>
+              <View style={styles.detailInfoBody}>
+                <Text style={styles.detailInfoLabel}>Trips</Text>
+                <Text style={styles.detailInfoValue}>{driver.totalTrips} trips completed</Text>
               </View>
             </View>
           </View>
@@ -291,8 +363,8 @@ function CustomerDetailModal({
   );
 }
 
-export default function UsersScreen({ navigation }: Props) {
-  const { customers, addCustomer, updateCustomer, deleteCustomer } = useAdmin();
+export default function DriversScreen({ navigation }: Props) {
+  const { drivers, addDriver, updateDriver, deleteDriver } = useAdmin();
   const [searchText, setSearchText] = useState('');
   const [fontsLoaded] = useFonts({
     Poppins_400Regular,
@@ -302,9 +374,9 @@ export default function UsersScreen({ navigation }: Props) {
   });
 
   const [formVisible, setFormVisible] = useState(false);
-  const [formCustomer, setFormCustomer] = useState<AdminCustomer | null>(null);
+  const [formDriver, setFormDriver] = useState<AdminDriver | null>(null);
   const [detailVisible, setDetailVisible] = useState(false);
-  const [selectedCustomer, setSelectedCustomer] = useState<AdminCustomer | null>(null);
+  const [selectedDriver, setSelectedDriver] = useState<AdminDriver | null>(null);
   const [deleteVisible, setDeleteVisible] = useState(false);
   const [success, setSuccess] = useState<{
     visible: boolean;
@@ -312,60 +384,70 @@ export default function UsersScreen({ navigation }: Props) {
     message: string;
   }>({ visible: false, title: '', message: '' });
 
-  const filteredCustomers = useMemo(() => {
+  const filteredDrivers = useMemo(() => {
     const normalizedSearch = searchText.trim().toLowerCase();
 
     if (!normalizedSearch) {
-      return customers;
+      return drivers;
     }
 
-    return customers.filter((customer) => {
+    return drivers.filter((driver) => {
       return (
-        customer.name.toLowerCase().includes(normalizedSearch) ||
-        customer.email.toLowerCase().includes(normalizedSearch) ||
-        customer.phone.toLowerCase().includes(normalizedSearch)
+        driver.name.toLowerCase().includes(normalizedSearch) ||
+        driver.vehicle.toLowerCase().includes(normalizedSearch) ||
+        driver.area.toLowerCase().includes(normalizedSearch) ||
+        driver.phone.toLowerCase().includes(normalizedSearch)
       );
     });
-  }, [customers, searchText]);
+  }, [drivers, searchText]);
 
   if (!fontsLoaded) return null;
 
   const openAdd = () => {
-    setFormCustomer(null);
+    setFormDriver(null);
     setFormVisible(true);
   };
 
   const openEdit = () => {
     setDetailVisible(false);
-    setFormCustomer(selectedCustomer);
+    setFormDriver(selectedDriver);
     setFormVisible(true);
   };
 
-  const handleSave = (draft: { name: string; email: string; phone: string }) => {
-    if (formCustomer) {
-      const patch = {
+  const handleSave = (draft: {
+    name: string;
+    phone: string;
+    vehicle: string;
+    registration: string;
+    area: ServiceArea;
+  }) => {
+    if (formDriver) {
+      updateDriver(formDriver.id, {
         name: draft.name,
-        email: draft.email,
         phone: draft.phone,
+        vehicle: draft.vehicle,
+        registration: draft.registration,
+        area: draft.area,
         initials: initialsFor(draft.name),
-      };
-      updateCustomer(formCustomer.id, patch);
+      });
       setFormVisible(false);
-      setSelectedCustomer(null);
+      setSelectedDriver(null);
       setSuccess({
         visible: true,
-        title: 'Customer updated',
+        title: 'Driver updated',
         message: `${draft.name}'s details have been updated.`,
       });
     } else {
-      const palette = AVATAR_PALETTE[customers.length % AVATAR_PALETTE.length];
-      addCustomer({
-        id: `c${Date.now()}`,
+      const palette = AVATAR_PALETTE[drivers.length % AVATAR_PALETTE.length];
+      addDriver({
+        id: `d${Date.now()}`,
         initials: initialsFor(draft.name),
         name: draft.name,
-        email: draft.email,
         phone: draft.phone,
-        totalOrders: 0,
+        vehicle: draft.vehicle,
+        registration: draft.registration,
+        area: draft.area,
+        totalTrips: 0,
         joinedDate: joinedStamp(),
         badgeColor: palette.badgeColor,
         initialsColor: palette.initialsColor,
@@ -373,66 +455,52 @@ export default function UsersScreen({ navigation }: Props) {
       setFormVisible(false);
       setSuccess({
         visible: true,
-        title: 'Customer added',
-        message: `${draft.name} has been added to your customers.`,
+        title: 'Driver added',
+        message: `${draft.name} has been added to your drivers.`,
       });
     }
   };
 
   const handleConfirmDelete = () => {
-    if (selectedCustomer) {
-      deleteCustomer(selectedCustomer.id);
+    if (selectedDriver) {
+      deleteDriver(selectedDriver.id);
     }
     setDeleteVisible(false);
     setDetailVisible(false);
-    setSelectedCustomer(null);
+    setSelectedDriver(null);
     setSuccess({
       visible: true,
-      title: 'Customer removed',
-      message: 'The customer has been deleted.',
+      title: 'Driver removed',
+      message: 'The driver has been deleted.',
     });
   };
 
-  const renderCustomer = ({ item }: { item: AdminCustomer }) => (
+  const renderDriver = ({ item }: { item: AdminDriver }) => (
     <TouchableOpacity
       style={styles.card}
       activeOpacity={0.85}
       onPress={() => {
-        setSelectedCustomer(item);
+        setSelectedDriver(item);
         setDetailVisible(true);
       }}
     >
-      <View
-        style={[
-          styles.avatar,
-          {
-            backgroundColor: item.badgeColor,
-          },
-        ]}
-      >
-        <Text
-          style={[
-            styles.avatarText,
-            {
-              color: item.initialsColor,
-            },
-          ]}
-        >
+      <View style={[styles.avatar, { backgroundColor: item.badgeColor }]}>
+        <Text style={[styles.avatarText, { color: item.initialsColor }]}>
           {item.initials}
         </Text>
       </View>
 
-      <View style={styles.customerDetails}>
-        <Text style={styles.customerName}>{item.name}</Text>
-        <View style={styles.phoneRow}>
-          <MaterialCommunityIcons name="phone-outline" size={12} color={TEXT_MUTED} />
-          <Text style={styles.phoneNumber}>{item.phone}</Text>
+      <View style={styles.driverDetails}>
+        <Text style={styles.driverName}>{item.name}</Text>
+        <View style={styles.vehicleRow}>
+          <MaterialCommunityIcons name="car-outline" size={12} color={TEXT_MUTED} />
+          <Text style={styles.vehicleText}>{item.vehicle}</Text>
         </View>
       </View>
 
-      <View style={styles.orderDetails}>
-        <Text style={styles.totalOrders}>{item.totalOrders} Orders</Text>
-        <Text style={styles.joinedDate}>{item.joinedDate}</Text>
+      <View style={styles.tripDetails}>
+        <Text style={styles.totalTrips}>{item.totalTrips} Trips</Text>
+        <Text style={styles.areaText}>{item.area}</Text>
       </View>
 
       <MaterialCommunityIcons name="chevron-right" size={20} color={TEXT_MUTED} />
@@ -450,7 +518,7 @@ export default function UsersScreen({ navigation }: Props) {
           >
             <MaterialCommunityIcons name="arrow-left" size={22} color={WHITE} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Customers</Text>
+          <Text style={styles.headerTitle}>Drivers</Text>
           <TouchableOpacity
             style={styles.headerIcon}
             onPress={openAdd}
@@ -461,9 +529,9 @@ export default function UsersScreen({ navigation }: Props) {
       </LinearGradient>
 
       <FlatList
-        data={filteredCustomers}
+        data={filteredDrivers}
         keyExtractor={(item) => item.id}
-        renderItem={renderCustomer}
+        renderItem={renderDriver}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
         ListHeaderComponent={
@@ -476,7 +544,7 @@ export default function UsersScreen({ navigation }: Props) {
                 style={styles.searchInput}
                 value={searchText}
                 onChangeText={setSearchText}
-                placeholder="Search customers..."
+                placeholder="Search drivers..."
                 placeholderTextColor={TEXT_MUTED}
                 autoCapitalize="none"
               />
@@ -488,36 +556,34 @@ export default function UsersScreen({ navigation }: Props) {
             </View>
 
             <Text style={styles.resultsText}>
-              {filteredCustomers.length}{' '}
-              {filteredCustomers.length === 1
-                ? 'customer'
-                : 'customers'}
+              {filteredDrivers.length}{' '}
+              {filteredDrivers.length === 1 ? 'driver' : 'drivers'}
             </Text>
           </>
         }
         ListEmptyComponent={
           <View style={styles.empty}>
             <View style={styles.emptyIconWrap}>
-              <MaterialCommunityIcons name="account-search-outline" size={48} color={BLUE} />
+              <MaterialCommunityIcons name="truck-outline" size={48} color={BLUE} />
             </View>
-            <Text style={styles.emptyTitle}>No customers found</Text>
+            <Text style={styles.emptyTitle}>No drivers found</Text>
             <Text style={styles.emptySubtitle}>
-              Try searching for another name or phone number.
+              Try searching for another name, vehicle or area.
             </Text>
           </View>
         }
       />
 
-      <CustomerFormModal
+      <DriverFormModal
         visible={formVisible}
-        customer={formCustomer}
+        driver={formDriver}
         onClose={() => setFormVisible(false)}
         onSave={handleSave}
       />
 
-      <CustomerDetailModal
+      <DriverDetailModal
         visible={detailVisible}
-        customer={selectedCustomer}
+        driver={selectedDriver}
         onClose={() => setDetailVisible(false)}
         onEdit={openEdit}
         onDelete={() => setDeleteVisible(true)}
@@ -534,11 +600,11 @@ export default function UsersScreen({ navigation }: Props) {
             <View style={styles.confirmIcon}>
               <MaterialCommunityIcons name="account-remove-outline" size={28} color={DANGER} />
             </View>
-            <Text style={styles.confirmTitle}>Delete customer</Text>
+            <Text style={styles.confirmTitle}>Delete driver</Text>
             <Text style={styles.confirmMessage}>
-              {selectedCustomer
-                ? `Are you sure you want to remove ${selectedCustomer.name}? This action cannot be undone.`
-                : 'Are you sure you want to remove this customer?'}
+              {selectedDriver
+                ? `Are you sure you want to remove ${selectedDriver.name}? This action cannot be undone.`
+                : 'Are you sure you want to remove this driver?'}
             </Text>
             <View style={styles.confirmActions}>
               <TouchableOpacity
@@ -560,9 +626,9 @@ export default function UsersScreen({ navigation }: Props) {
 
       <FancyAlert
         visible={success.visible}
-        icon={success.title === 'Customer removed' ? 'account-remove-outline' : 'account-check-outline'}
-        iconColor={success.title === 'Customer removed' ? '#C2383C' : '#0B7A50'}
-        iconBackground={success.title === 'Customer removed' ? '#FDE7E8' : '#DDF8E8'}
+        icon={success.title === 'Driver removed' ? 'account-remove-outline' : 'truck-check-outline'}
+        iconColor={success.title === 'Driver removed' ? '#C2383C' : '#0B7A50'}
+        iconBackground={success.title === 'Driver removed' ? '#FDE7E8' : '#DDF8E8'}
         title={success.title}
         message={success.message}
         onClose={() => setSuccess((prev) => ({ ...prev, visible: false }))}
@@ -678,35 +744,35 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 15,
   },
-  customerDetails: {
+  driverDetails: {
     flex: 1,
   },
-  customerName: {
+  driverName: {
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 14,
     color: TEXT_DARK,
   },
-  phoneRow: {
+  vehicleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 4,
   },
-  phoneNumber: {
+  vehicleText: {
     marginLeft: 4,
     fontFamily: 'Poppins_400Regular',
     fontSize: 11,
     color: TEXT_MUTED,
   },
-  orderDetails: {
+  tripDetails: {
     alignItems: 'flex-end',
     marginRight: 10,
   },
-  totalOrders: {
+  totalTrips: {
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 12,
-    color: BLUE,
+    color: PURPLE,
   },
-  joinedDate: {
+  areaText: {
     marginTop: 4,
     fontFamily: 'Poppins_400Regular',
     fontSize: 9,
@@ -808,6 +874,48 @@ const styles = StyleSheet.create({
     color: DANGER,
     marginTop: -8,
     marginBottom: 10,
+  },
+  areaWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 6,
+  },
+  areaChip: {
+    flexDirection: 'row',
+    borderRadius: 14,
+    marginRight: 8,
+    marginBottom: 8,
+    overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: BORDER,
+    backgroundColor: WHITE,
+  },
+  areaChipActive: {
+    borderColor: 'transparent',
+  },
+  areaChipInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  areaChipGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  areaChipText: {
+    fontFamily: 'Poppins_500Medium',
+    fontSize: 12,
+    color: BLUE,
+    marginLeft: 5,
+  },
+  areaChipTextActive: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 12,
+    color: WHITE,
+    marginLeft: 5,
   },
   formSaveTouch: {
     borderRadius: 14,

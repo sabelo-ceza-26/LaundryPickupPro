@@ -4,6 +4,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -19,8 +20,10 @@ import {
   Poppins_700Bold,
 } from '@expo-google-fonts/poppins';
 
+import FancyAlert from '../../components/FancyAlert';
 import { useAuth } from '../../hooks/useAuth';
 import { useOrders } from '../../context/OrdersContext';
+import { isEmail, isPhone, isRequired } from '../../utils/validation';
 import type { CustomerTabNavigation } from '../../navigation/types';
 import { ROLE_LABELS } from '../../types';
 
@@ -32,8 +35,15 @@ type MenuRow = {
   onPress: (navigation: CustomerTabNavigation) => void;
 };
 
-const TEAL = '#0F363F';
-const TEAL_MID = '#1E5660';
+const BLUE = '#2E6BFF';
+const BLUE_TINT = '#E4EEFF';
+const PURPLE = '#7857FF';
+const PURPLE_TINT = '#EFEBFF';
+const AMBER = '#E8960C';
+const AMBER_TINT = '#FFF0B8';
+const GREEN = '#00A85A';
+const GREEN_TINT = '#DDF8E8';
+const TEAL_HEADING = '#0E7A86';
 const ICON_DARK = '#2B3642';
 const TEXT_DARK = '#1F2933';
 const TEXT_MUTED = '#7A869A';
@@ -41,14 +51,14 @@ const BORDER = '#E8ECF1';
 const WHITE = '#FFFFFF';
 const DANGER = '#E5484D';
 
-const GRADIENT_TEAL = [TEAL_MID, TEAL] as const;
+const GRADIENT_VIBRANT = [BLUE, PURPLE] as const;
 
 const menuRows: MenuRow[] = [
   {
     label: 'Account Settings',
     icon: 'account-cog-outline',
-    tint: '#E2ECEB',
-    color: TEAL,
+    tint: PURPLE_TINT,
+    color: PURPLE,
     onPress: (navigation) => navigation.navigate('Settings'),
   },
   {
@@ -75,7 +85,7 @@ const menuRows: MenuRow[] = [
 ];
 
 export default function ProfileScreen() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, updateUser } = useAuth();
   const { orders } = useOrders();
   const navigation = useNavigation<CustomerTabNavigation>();
   const [fontsLoaded] = useFonts({
@@ -85,6 +95,12 @@ export default function ProfileScreen() {
     Poppins_700Bold,
   });
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editErrors, setEditErrors] = useState<Record<string, string>>({});
+  const [saveSuccessVisible, setSaveSuccessVisible] = useState(false);
 
   if (!fontsLoaded) return null;
 
@@ -94,6 +110,31 @@ export default function ProfileScreen() {
   const roleLabel = user?.role ? ROLE_LABELS[user.role] : 'Customer';
   const totalDelivered = orders.filter((o) => o.status === 'Delivered').length;
   const activeCount = orders.filter((o) => o.status !== 'Delivered' && o.status !== 'Cancelled').length;
+
+  const openEdit = () => {
+    setEditName(user?.name ?? displayName);
+    setEditEmail(user?.email ?? displayEmail);
+    setEditPhone(user?.phone ?? '');
+    setEditErrors({});
+    setShowEditModal(true);
+  };
+
+  const saveProfile = () => {
+    const next: Record<string, string> = {};
+    if (!isRequired(editName)) next.name = 'Enter your name';
+    if (!isEmail(editEmail)) next.email = 'Enter a valid email';
+    if (editPhone.trim() && !isPhone(editPhone)) next.phone = 'Enter a valid phone number';
+    setEditErrors(next);
+    if (Object.keys(next).length > 0) return;
+
+    updateUser({
+      name: editName.trim(),
+      email: editEmail.trim(),
+      phone: editPhone.trim() || undefined,
+    });
+    setShowEditModal(false);
+    setSaveSuccessVisible(true);
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -112,7 +153,8 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
 
-        <LinearGradient colors={GRADIENT_TEAL} style={styles.profileCard}>
+        <LinearGradient colors={GRADIENT_VIBRANT} style={styles.profileCard}>
+          <View style={styles.shine} />
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{displayName.charAt(0).toUpperCase()}</Text>
           </View>
@@ -126,19 +168,39 @@ export default function ProfileScreen() {
               <Text style={styles.roleBadgeText}>{roleLabel}</Text>
             </View>
           </View>
+          <TouchableOpacity
+            style={styles.editChip}
+            activeOpacity={0.8}
+            onPress={openEdit}
+          >
+            <MaterialCommunityIcons name="pencil-outline" size={17} color={WHITE} />
+          </TouchableOpacity>
         </LinearGradient>
 
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{orders.length}</Text>
+            <View style={[styles.statIcon, { backgroundColor: BLUE_TINT }]}>
+              <MaterialCommunityIcons name="receipt-text-outline" size={16} color={BLUE} />
+            </View>
+            <Text style={[styles.statNumber, { color: BLUE }]}>{orders.length}</Text>
             <Text style={styles.statLabel}>Orders</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{activeCount}</Text>
+            <View style={[styles.statIcon, { backgroundColor: AMBER_TINT }]}>
+              <MaterialCommunityIcons name="progress-clock" size={16} color={AMBER} />
+            </View>
+            <Text style={[styles.statNumber, { color: AMBER }]}>{activeCount}</Text>
             <Text style={styles.statLabel}>Active</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{totalDelivered}</Text>
+            <View style={[styles.statIcon, { backgroundColor: GREEN_TINT }]}>
+              <MaterialCommunityIcons
+                name="package-variant-closed-check"
+                size={16}
+                color={GREEN}
+              />
+            </View>
+            <Text style={[styles.statNumber, { color: GREEN }]}>{totalDelivered}</Text>
             <Text style={styles.statLabel}>Delivered</Text>
           </View>
         </View>
@@ -209,6 +271,90 @@ export default function ProfileScreen() {
           </View>
         </View>
       </Modal>
+
+      <Modal
+        visible={showEditModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowEditModal(false)}
+      >
+        <View style={styles.editOverlay}>
+          <View style={styles.editCard}>
+            <View style={styles.editHeader}>
+              <Text style={styles.editTitle}>Edit Profile</Text>
+              <TouchableOpacity
+                style={styles.editClose}
+                onPress={() => setShowEditModal(false)}
+              >
+                <MaterialCommunityIcons name="close" size={20} color={TEXT_MUTED} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.editLabel}>Full name</Text>
+            <View style={[styles.editInputField, editErrors.name && styles.editInputError]}>
+              <MaterialCommunityIcons name="account-outline" size={18} color={TEXT_MUTED} />
+              <TextInput
+                style={styles.editInput}
+                value={editName}
+                onChangeText={setEditName}
+                placeholder="Your name"
+                placeholderTextColor={TEXT_MUTED}
+                autoCapitalize="words"
+              />
+            </View>
+            {editErrors.name && <Text style={styles.editErrorText}>{editErrors.name}</Text>}
+
+            <Text style={styles.editLabel}>Email address</Text>
+            <View style={[styles.editInputField, editErrors.email && styles.editInputError]}>
+              <MaterialCommunityIcons name="email-outline" size={18} color={TEXT_MUTED} />
+              <TextInput
+                style={styles.editInput}
+                value={editEmail}
+                onChangeText={setEditEmail}
+                placeholder="you@example.com"
+                placeholderTextColor={TEXT_MUTED}
+                autoCapitalize="none"
+                keyboardType="email-address"
+              />
+            </View>
+            {editErrors.email && <Text style={styles.editErrorText}>{editErrors.email}</Text>}
+
+            <Text style={styles.editLabel}>Phone number</Text>
+            <View style={[styles.editInputField, editErrors.phone && styles.editInputError]}>
+              <MaterialCommunityIcons name="phone-outline" size={18} color={TEXT_MUTED} />
+              <TextInput
+                style={styles.editInput}
+                value={editPhone}
+                onChangeText={setEditPhone}
+                placeholder="Optional"
+                placeholderTextColor={TEXT_MUTED}
+                keyboardType="phone-pad"
+              />
+            </View>
+            {editErrors.phone && <Text style={styles.editErrorText}>{editErrors.phone}</Text>}
+
+            <TouchableOpacity
+              style={styles.editSaveTouch}
+              activeOpacity={0.9}
+              onPress={saveProfile}
+            >
+              <LinearGradient colors={GRADIENT_VIBRANT} style={styles.editSave}>
+                <Text style={styles.editSaveText}>Save changes</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <FancyAlert
+        visible={saveSuccessVisible}
+        icon="account-check-outline"
+        iconColor="#0B7A50"
+        iconBackground="#DDF8E8"
+        title="Profile updated"
+        message="Your profile details have been saved successfully."
+        onClose={() => setSaveSuccessVisible(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -219,7 +365,7 @@ const styles = StyleSheet.create({
     backgroundColor: WHITE,
   },
   scroll: {
-    backgroundColor: '#F7F9FB',
+    backgroundColor: '#F5F7FA',
   },
   container: {
     paddingHorizontal: 20,
@@ -251,10 +397,21 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 18,
     elevation: 4,
-    shadowColor: TEAL,
+    shadowColor: BLUE,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.2,
     shadowRadius: 12,
+    overflow: 'hidden',
+  },
+  shine: {
+    position: 'absolute',
+    top: -30,
+    left: -30,
+    width: 90,
+    height: 120,
+    borderRadius: 45,
+    backgroundColor: 'rgba(255, 255, 255, 0.14)',
+    transform: [{ rotate: '20deg' }],
   },
   avatar: {
     width: 64,
@@ -272,6 +429,18 @@ const styles = StyleSheet.create({
   },
   profileInfo: {
     flex: 1,
+  },
+  editChip: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    marginLeft: 6,
   },
   name: {
     fontFamily: 'Poppins_600SemiBold',
@@ -315,13 +484,21 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: BORDER,
-    paddingVertical: 14,
+    paddingVertical: 12,
     alignItems: 'center',
+  },
+  statIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 6,
   },
   statNumber: {
     fontFamily: 'Poppins_700Bold',
     fontSize: 20,
-    color: TEAL,
+    color: TEXT_DARK,
   },
   statLabel: {
     fontFamily: 'Poppins_400Regular',
@@ -332,7 +509,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 15,
-    color: TEXT_DARK,
+    color: TEAL_HEADING,
     marginBottom: 10,
   },
   menuCard: {
@@ -460,6 +637,91 @@ const styles = StyleSheet.create({
   modalConfirmText: {
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 14,
+    color: WHITE,
+  },
+  editOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(18, 38, 58, 0.45)',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  editCard: {
+    backgroundColor: WHITE,
+    borderRadius: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+  },
+  editHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  editTitle: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 18,
+    color: TEXT_DARK,
+  },
+  editClose: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F3F6F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  editLabel: {
+    fontFamily: 'Poppins_500Medium',
+    fontSize: 12,
+    color: TEXT_MUTED,
+    marginBottom: 8,
+  },
+  editInputField: {
+    height: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: WHITE,
+    borderWidth: 1.5,
+    borderColor: BORDER,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    marginBottom: 14,
+  },
+  editInputError: {
+    borderColor: DANGER,
+  },
+  editInput: {
+    flex: 1,
+    marginLeft: 10,
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 14,
+    color: TEXT_DARK,
+  },
+  editErrorText: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 11,
+    color: DANGER,
+    marginTop: -8,
+    marginBottom: 10,
+  },
+  editSaveTouch: {
+    borderRadius: 14,
+    marginTop: 6,
+  },
+  editSave: {
+    height: 52,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 3,
+    shadowColor: BLUE,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+  },
+  editSaveText: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 15,
     color: WHITE,
   },
 });

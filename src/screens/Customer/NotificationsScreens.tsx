@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
   useFonts,
@@ -23,6 +24,8 @@ type Props = NativeStackScreenProps<CustomerStackParamList, 'Notifications'>;
 
 type Icon = keyof typeof MaterialCommunityIcons.glyphMap;
 
+type NotificationType = 'order' | 'promotion' | 'system' | 'alert';
+
 type Notification = {
   id: number;
   title: string;
@@ -30,16 +33,37 @@ type Notification = {
   time: string;
   read: boolean;
   icon: Icon;
-  color: string;
-  tint: string;
+  type: NotificationType;
 };
 
-const TEAL = '#0F363F';
-const ICON_DARK = '#2B3642';
+const PRIMARY = '#2E6BFF';
+const PURPLE = '#7857FF';
+const TEAL = '#0E9AA7';
+const TEAL_DARK = '#0E7A86';
+const GREEN = '#00A85A';
+const AMBER = '#E8960C';
+const DANGER = '#E5484D';
 const TEXT_DARK = '#1F2933';
 const TEXT_MUTED = '#7A869A';
 const BORDER = '#E8ECF1';
+const BG = '#F5F7FA';
 const WHITE = '#FFFFFF';
+
+const BLUE_TINT = '#E4EEFF';
+const TEAL_TINT = '#D6F0F4';
+const GREEN_TINT = '#DDF8E8';
+const AMBER_TINT = '#FFF0B8';
+const RED_TINT = '#FDE7E8';
+
+const GRADIENT_HEADER = ['#2E6BFF', '#7857FF'] as const;
+const GRADIENT_VIBRANT = ['#2E6BFF', '#7857FF'] as const;
+
+const TYPE_COLOR: Record<NotificationType, { color: string; tint: string }> = {
+  order: { color: PRIMARY, tint: BLUE_TINT },
+  promotion: { color: AMBER, tint: AMBER_TINT },
+  system: { color: TEAL, tint: TEAL_TINT },
+  alert: { color: DANGER, tint: RED_TINT },
+};
 
 const initialNotifications: Notification[] = [
   {
@@ -49,8 +73,7 @@ const initialNotifications: Notification[] = [
     time: '10 min ago',
     read: false,
     icon: 'calendar-check-outline',
-    color: '#0F363F',
-    tint: '#E2ECEB',
+    type: 'order',
   },
   {
     id: 2,
@@ -59,8 +82,7 @@ const initialNotifications: Notification[] = [
     time: '25 min ago',
     read: false,
     icon: 'truck-delivery-outline',
-    color: '#00A85A',
-    tint: '#DDF8E8',
+    type: 'system',
   },
   {
     id: 3,
@@ -69,8 +91,7 @@ const initialNotifications: Notification[] = [
     time: '1 hr ago',
     read: false,
     icon: 'credit-card-check-outline',
-    color: '#2E6BFF',
-    tint: '#E4EEFF',
+    type: 'order',
   },
   {
     id: 4,
@@ -79,8 +100,7 @@ const initialNotifications: Notification[] = [
     time: '2 hrs ago',
     read: true,
     icon: 'storefront-outline',
-    color: '#5B48F7',
-    tint: '#EAE6FF',
+    type: 'system',
   },
   {
     id: 5,
@@ -89,8 +109,7 @@ const initialNotifications: Notification[] = [
     time: 'Yesterday',
     read: true,
     icon: 'tag-heart',
-    color: '#F4A928',
-    tint: '#FFF0B8',
+    type: 'promotion',
   },
   {
     id: 6,
@@ -99,8 +118,7 @@ const initialNotifications: Notification[] = [
     time: 'Fri, Jul 31',
     read: true,
     icon: 'package-variant-closed-check',
-    color: '#687385',
-    tint: '#EEF1F5',
+    type: 'system',
   },
 ];
 
@@ -130,28 +148,39 @@ export default function NotificationsScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
+      <LinearGradient colors={GRADIENT_HEADER} style={styles.header}>
+        <View style={styles.decorCircleOne} />
+        <View style={styles.decorCircleTwo} />
+        <View style={styles.headerShine} />
         <TouchableOpacity style={styles.headerIcon} onPress={() => navigation.goBack()}>
-          <MaterialCommunityIcons name="arrow-left" size={24} color={ICON_DARK} />
+          <MaterialCommunityIcons name="arrow-left" size={24} color={WHITE} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Notifications</Text>
-        <TouchableOpacity
-          style={styles.markAllButton}
-          disabled={unreadCount === 0}
-          onPress={markAllAsRead}
-        >
-          <Text style={[styles.markAllText, unreadCount === 0 && styles.markAllDisabled]}>
-            Mark all
-          </Text>
+        <TouchableOpacity style={styles.headerSpacer}>
+          <MaterialCommunityIcons name="bell-outline" size={24} color="rgba(255, 255, 255, 0.9)" />
         </TouchableOpacity>
-      </View>
+      </LinearGradient>
 
       {unreadCount > 0 && (
         <View style={styles.unreadBanner}>
-          <View style={styles.unreadDot} />
+          <View style={styles.unreadBadge}>
+            <Text style={styles.unreadBadgeText}>{unreadCount}</Text>
+          </View>
           <Text style={styles.unreadBannerText}>
             {unreadCount} unread notification{unreadCount > 1 ? 's' : ''}
           </Text>
+        </View>
+      )}
+
+      {unreadCount > 0 && (
+        <View style={styles.actionWrap}>
+          <TouchableOpacity activeOpacity={0.9} onPress={markAllAsRead}>
+            <LinearGradient colors={GRADIENT_VIBRANT} style={styles.markAllButton}>
+              <View style={styles.shine} />
+              <MaterialCommunityIcons name="check-all" size={18} color={WHITE} />
+              <Text style={styles.markAllButtonText}>Mark all as read</Text>
+            </LinearGradient>
+          </TouchableOpacity>
         </View>
       )}
 
@@ -160,27 +189,41 @@ export default function NotificationsScreen({ navigation }: Props) {
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={[styles.card, !item.read && styles.cardUnread]}
-            activeOpacity={0.85}
-            onPress={() => markAsRead(item.id)}
-          >
-            <View style={[styles.iconCircle, { backgroundColor: item.tint }]}>
-              <MaterialCommunityIcons name={item.icon} size={22} color={item.color} />
+        ListEmptyComponent={
+          <View style={styles.empty}>
+            <View style={styles.emptyIconCircle}>
+              <MaterialCommunityIcons name="bell-off-outline" size={40} color={PRIMARY} />
             </View>
-            <View style={styles.cardBody}>
-              <View style={styles.cardTitleRow}>
-                <Text style={[styles.cardTitle, !item.read && styles.cardTitleUnread]}>
-                  {item.title}
-                </Text>
-                {!item.read && <View style={styles.titleDot} />}
+            <Text style={styles.emptyTitle}>No notifications yet</Text>
+            <Text style={styles.emptySubtitle}>
+              Updates about your orders will appear here.
+            </Text>
+          </View>
+        }
+        renderItem={({ item }) => {
+          const { color, tint } = TYPE_COLOR[item.type];
+          return (
+            <TouchableOpacity
+              style={[styles.card, !item.read && styles.cardUnread]}
+              activeOpacity={0.85}
+              onPress={() => markAsRead(item.id)}
+            >
+              <View style={[styles.iconCircle, { backgroundColor: tint }]}>
+                <MaterialCommunityIcons name={item.icon} size={22} color={color} />
               </View>
-              <Text style={styles.cardMessage}>{item.message}</Text>
-              <Text style={styles.cardTime}>{item.time}</Text>
-            </View>
-          </TouchableOpacity>
-        )}
+              <View style={styles.cardBody}>
+                <View style={styles.cardTitleRow}>
+                  <Text style={[styles.cardTitle, !item.read && styles.cardTitleUnread]}>
+                    {item.title}
+                  </Text>
+                  {!item.read && <View style={[styles.titleDot, { backgroundColor: color }]} />}
+                </View>
+                <Text style={styles.cardMessage}>{item.message}</Text>
+                <Text style={styles.cardTime}>{item.time}</Text>
+              </View>
+            </TouchableOpacity>
+          );
+        }}
       />
     </SafeAreaView>
   );
@@ -189,63 +232,130 @@ export default function NotificationsScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: WHITE,
+    backgroundColor: BG,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingTop: 16,
+    paddingBottom: 22,
+    borderBottomLeftRadius: 26,
+    borderBottomRightRadius: 26,
+    overflow: 'hidden',
+  },
+  decorCircleOne: {
+    position: 'absolute',
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    top: -70,
+    right: -40,
+  },
+  decorCircleTwo: {
+    position: 'absolute',
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    bottom: -50,
+    left: -30,
+  },
+  headerShine: {
+    position: 'absolute',
+    top: -46,
+    right: -20,
+    width: 90,
+    height: 120,
+    borderRadius: 45,
+    backgroundColor: 'rgba(255, 255, 255, 0.14)',
+    transform: [{ rotate: '-20deg' }],
+  },
+  shine: {
+    position: 'absolute',
+    top: -30,
+    left: -30,
+    width: 90,
+    height: 120,
+    borderRadius: 45,
+    backgroundColor: 'rgba(255, 255, 255, 0.14)',
+    transform: [{ rotate: '20deg' }],
   },
   headerIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#F3F6F9',
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: BORDER,
+  },
+  headerSpacer: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerTitle: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 18,
-    color: TEXT_DARK,
-  },
-  markAllButton: {
-    minWidth: 64,
-    alignItems: 'flex-end',
-  },
-  markAllText: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 13,
-    color: TEAL,
-  },
-  markAllDisabled: {
-    color: '#B9C3CD',
+    flex: 1,
+    textAlign: 'center',
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 20,
+    color: WHITE,
   },
   unreadBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F3F6F9',
+    backgroundColor: BLUE_TINT,
+    borderBottomWidth: 1,
+    borderColor: '#D4E2FF',
     paddingHorizontal: 20,
     paddingVertical: 10,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: BORDER,
   },
-  unreadDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: TEAL,
-    marginRight: 8,
+  unreadBadge: {
+    minWidth: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: PRIMARY,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+    paddingHorizontal: 6,
+  },
+  unreadBadgeText: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 12,
+    color: WHITE,
   },
   unreadBannerText: {
-    fontFamily: 'Poppins_500Medium',
+    fontFamily: 'Poppins_600SemiBold',
     fontSize: 12,
-    color: TEXT_DARK,
+    color: TEAL_DARK,
+  },
+  actionWrap: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+  },
+  markAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 13,
+    borderRadius: 16,
+    overflow: 'hidden',
+    elevation: 2,
+    shadowColor: PRIMARY,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+  },
+  markAllButtonText: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 14,
+    color: WHITE,
+    marginLeft: 8,
   },
   listContent: {
     padding: 16,
@@ -253,7 +363,7 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: WHITE,
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: BORDER,
     padding: 14,
@@ -261,7 +371,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   cardUnread: {
-    backgroundColor: '#FBFCFD',
+    backgroundColor: '#F4F8FF',
+    borderColor: '#D8E6FF',
   },
   iconCircle: {
     width: 44,
@@ -291,7 +402,6 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: TEAL,
     marginLeft: 8,
   },
   cardMessage: {
@@ -306,5 +416,31 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#B0BAC4',
     marginTop: 6,
+  },
+  empty: {
+    alignItems: 'center',
+    paddingTop: 80,
+    paddingHorizontal: 30,
+  },
+  emptyIconCircle: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: BLUE_TINT,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyTitle: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 17,
+    color: TEXT_DARK,
+    marginTop: 14,
+  },
+  emptySubtitle: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 13,
+    color: TEXT_MUTED,
+    marginTop: 6,
+    textAlign: 'center',
   },
 });

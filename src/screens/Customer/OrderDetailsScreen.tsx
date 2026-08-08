@@ -30,38 +30,73 @@ type Props = NativeStackScreenProps<CustomerStackParamList, 'OrderDetails'>;
 
 type Icon = keyof typeof MaterialCommunityIcons.glyphMap;
 
-const TEAL = '#0F363F';
-const TEAL_MID = '#1E5660';
-const TEAL_TINT = '#E2ECEB';
+const BLUE = '#2E6BFF';
+const BLUE_TINT = '#E4EEFF';
+const PURPLE = '#7857FF';
+const PURPLE_TINT = '#EFEBFF';
+const AMBER = '#E8960C';
+const AMBER_TINT = '#FFF0B8';
+const GREEN = '#00A85A';
+const GREEN_TINT = '#DDF8E8';
+const TEAL_ACCENT = '#0E9AA7';
+const TEAL_TINT = '#D6F0F4';
+const TEAL_HEADING = '#0E7A86';
 const TEXT_DARK = '#1F2933';
 const TEXT_MUTED = '#7A869A';
 const BORDER = '#E8ECF1';
 const WHITE = '#FFFFFF';
 const colorsDanger = '#E5484D';
 
-const GRADIENT_TEAL = [TEAL_MID, TEAL] as const;
+const GRADIENT_VIBRANT = [BLUE, PURPLE] as const;
+const GRADIENT_DANGER = ['#E5484D', '#C2383C'] as const;
 
 const statusColor: Record<OrderStatus, string> = {
-  Scheduled: '#F4A928',
-  'Picked Up': '#5B48F7',
+  Scheduled: '#E8960C',
+  'Picked Up': '#7857FF',
   'At Laundromat': '#2E6BFF',
   'Out for Delivery': '#00A85A',
-  Delivered: '#687385',
+  Delivered: '#0E9AA7',
   Cancelled: '#E5484D',
 };
+
+const statusGradient: Record<OrderStatus, readonly [string, string]> = {
+  Scheduled: ['#E8960C', '#B97308'],
+  'Picked Up': ['#7857FF', '#5334E0'],
+  'At Laundromat': ['#2E6BFF', '#1A49D4'],
+  'Out for Delivery': ['#00A85A', '#0B7A50'],
+  Delivered: ['#17879B', '#0E5E73'],
+  Cancelled: ['#E5484D', '#C2383C'],
+};
+
+const ITEM_ACCENTS = [
+  { color: BLUE, tint: BLUE_TINT },
+  { color: PURPLE, tint: PURPLE_TINT },
+  { color: TEAL_ACCENT, tint: TEAL_TINT },
+  { color: GREEN, tint: GREEN_TINT },
+  { color: AMBER, tint: AMBER_TINT },
+] as const;
 
 type DetailRowProps = {
   icon: Icon;
   label: string;
   value: string;
+  color?: string;
+  tint?: string;
   last?: boolean;
 };
 
-function DetailRow({ icon, label, value, last }: DetailRowProps) {
+function DetailRow({
+  icon,
+  label,
+  value,
+  color = BLUE,
+  tint = BLUE_TINT,
+  last,
+}: DetailRowProps) {
   return (
     <View style={[styles.detailRow, last && styles.detailRowLast]}>
-      <View style={styles.detailIcon}>
-        <MaterialCommunityIcons name={icon} size={18} color={TEAL} />
+      <View style={[styles.detailIcon, { backgroundColor: tint }]}>
+        <MaterialCommunityIcons name={icon} size={18} color={color} />
       </View>
       <View style={styles.detailBody}>
         <Text style={styles.detailLabel}>{label}</Text>
@@ -85,6 +120,7 @@ export default function OrderDetailsScreen({ navigation, route }: Props) {
   if (!fontsLoaded) return null;
 
   const color = statusColor[order.status];
+  const heroGradient = statusGradient[order.status];
   const active = isOrderActive(order.status);
   const cancellable = isOrderCancellable(order.status);
   const subtotal = order.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -120,9 +156,13 @@ export default function OrderDetailsScreen({ navigation, route }: Props) {
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
       >
-        <LinearGradient colors={GRADIENT_TEAL} style={styles.hero}>
+        <LinearGradient
+          colors={heroGradient}
+          style={[styles.hero, { shadowColor: heroGradient[0] }]}
+        >
+          <View style={styles.shine} />
           <View style={styles.heroIcon}>
-            <MaterialCommunityIcons name="basket-outline" size={26} color={TEAL} />
+            <MaterialCommunityIcons name="basket-outline" size={26} color={WHITE} />
           </View>
           <View style={styles.heroText}>
             <Text style={styles.heroService}>{order.service}</Text>
@@ -144,23 +184,30 @@ export default function OrderDetailsScreen({ navigation, route }: Props) {
 
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Items</Text>
-          {order.items.map((item, index) => (
-            <View
-              key={`${item.name}-${index}`}
-              style={[styles.itemRow, index === order.items.length - 1 && styles.itemRowLast]}
-            >
-              <View style={styles.itemIcon}>
-                <MaterialCommunityIcons name="tshirt-crew-outline" size={18} color={TEAL} />
+          {order.items.map((item, index) => {
+            const accent = ITEM_ACCENTS[index % ITEM_ACCENTS.length];
+            return (
+              <View
+                key={`${item.name}-${index}`}
+                style={[styles.itemRow, index === order.items.length - 1 && styles.itemRowLast]}
+              >
+                <View style={[styles.itemIcon, { backgroundColor: accent.tint }]}>
+                  <MaterialCommunityIcons name="tshirt-crew-outline" size={18} color={accent.color} />
+                </View>
+                <View style={styles.itemBody}>
+                  <Text style={styles.itemName}>{item.name}</Text>
+                  <View style={[styles.qtyBadge, { backgroundColor: accent.tint }]}>
+                    <Text style={[styles.itemQty, { color: accent.color }]}>
+                      Qty {item.quantity}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={styles.itemPrice}>
+                  {formatMoney(item.price * item.quantity)}
+                </Text>
               </View>
-              <View style={styles.itemBody}>
-                <Text style={styles.itemName}>{item.name}</Text>
-                <Text style={styles.itemQty}>Qty {item.quantity}</Text>
-              </View>
-              <Text style={styles.itemPrice}>
-                {formatMoney(item.price * item.quantity)}
-              </Text>
-            </View>
-          ))}
+            );
+          })}
           <View style={styles.totalDivider} />
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Subtotal</Text>
@@ -182,21 +229,29 @@ export default function OrderDetailsScreen({ navigation, route }: Props) {
             icon="map-marker-outline"
             label="Pickup Address"
             value={order.pickupAddress}
+            color={BLUE}
+            tint={BLUE_TINT}
           />
           <DetailRow
             icon="home-variant-outline"
             label="Delivery Address"
             value={order.deliveryAddress}
+            color={PURPLE}
+            tint={PURPLE_TINT}
           />
           <DetailRow
             icon="calendar-outline"
             label="Pickup Window"
             value={order.pickupWindow}
+            color={AMBER}
+            tint={AMBER_TINT}
           />
           <DetailRow
             icon="clock-outline"
             label="Delivery Window"
             value={order.deliveryWindow}
+            color={TEAL_ACCENT}
+            tint={TEAL_TINT}
             last
           />
         </View>
@@ -207,6 +262,8 @@ export default function OrderDetailsScreen({ navigation, route }: Props) {
             icon="credit-card-outline"
             label="Payment Method"
             value={order.paymentMethod}
+            color={GREEN}
+            tint={GREEN_TINT}
             last
           />
         </View>
@@ -226,15 +283,19 @@ export default function OrderDetailsScreen({ navigation, route }: Props) {
             activeOpacity={0.9}
             onPress={handleTrack}
           >
-            <LinearGradient colors={GRADIENT_TEAL} style={styles.primaryButton}>
+            <LinearGradient colors={GRADIENT_VIBRANT} style={styles.primaryButton}>
+              <View style={styles.shine} />
               <Text style={styles.primaryButtonText}>Track Order</Text>
               <MaterialCommunityIcons name="map-marker-outline" size={18} color={WHITE} />
             </LinearGradient>
           </TouchableOpacity>
         )}
         {cancellable && (
-          <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
-            <Text style={styles.cancelButtonText}>Cancel Order</Text>
+          <TouchableOpacity style={styles.cancelButtonTouch} onPress={handleCancel}>
+            <LinearGradient colors={GRADIENT_DANGER} style={styles.cancelButton}>
+              <View style={styles.shine} />
+              <Text style={styles.cancelButtonText}>Cancel Order</Text>
+            </LinearGradient>
           </TouchableOpacity>
         )}
       </View>
@@ -248,7 +309,7 @@ const styles = StyleSheet.create({
     backgroundColor: WHITE,
   },
   scroll: {
-    backgroundColor: '#F7F9FB',
+    backgroundColor: '#F5F7FA',
   },
   container: {
     paddingHorizontal: 20,
@@ -261,17 +322,27 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 18,
     elevation: 4,
-    shadowColor: TEAL,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.2,
     shadowRadius: 12,
     marginBottom: 14,
+    overflow: 'hidden',
+  },
+  shine: {
+    position: 'absolute',
+    top: -30,
+    left: -30,
+    width: 90,
+    height: 120,
+    borderRadius: 45,
+    backgroundColor: 'rgba(255, 255, 255, 0.14)',
+    transform: [{ rotate: '20deg' }],
   },
   heroIcon: {
     width: 48,
     height: 48,
     borderRadius: 15,
-    backgroundColor: WHITE,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -343,7 +414,7 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 15,
-    color: TEXT_DARK,
+    color: TEAL_HEADING,
     marginBottom: 6,
   },
   itemRow: {
@@ -359,8 +430,7 @@ const styles = StyleSheet.create({
   itemIcon: {
     width: 36,
     height: 36,
-    borderRadius: 11,
-    backgroundColor: TEAL_TINT,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -373,11 +443,16 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: TEXT_DARK,
   },
+  qtyBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    marginTop: 4,
+  },
   itemQty: {
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: 'Poppins_600SemiBold',
     fontSize: 11,
-    color: TEXT_MUTED,
-    marginTop: 1,
   },
   itemPrice: {
     fontFamily: 'Poppins_600SemiBold',
@@ -421,7 +496,7 @@ const styles = StyleSheet.create({
   grandValue: {
     fontFamily: 'Poppins_700Bold',
     fontSize: 18,
-    color: TEAL,
+    color: TEAL_ACCENT,
   },
   detailRow: {
     flexDirection: 'row',
@@ -434,10 +509,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0,
   },
   detailIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    backgroundColor: TEAL_TINT,
+    width: 36,
+    height: 36,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -480,6 +554,11 @@ const styles = StyleSheet.create({
   },
   primaryButtonTouch: {
     borderRadius: 18,
+    elevation: 4,
+    shadowColor: BLUE,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
   },
   primaryButton: {
     flexDirection: 'row',
@@ -487,11 +566,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     height: 56,
     borderRadius: 18,
-    elevation: 4,
-    shadowColor: TEAL,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
+    overflow: 'hidden',
   },
   primaryButtonText: {
     fontFamily: 'Poppins_600SemiBold',
@@ -499,18 +574,25 @@ const styles = StyleSheet.create({
     color: WHITE,
     marginRight: 8,
   },
+  cancelButtonTouch: {
+    borderRadius: 18,
+    elevation: 3,
+    shadowColor: colorsDanger,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+  },
   cancelButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     height: 56,
     borderRadius: 18,
-    borderWidth: 1.5,
-    borderColor: colorsDanger,
-    backgroundColor: WHITE,
-    justifyContent: 'center',
-    alignItems: 'center',
+    overflow: 'hidden',
   },
   cancelButtonText: {
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 16,
-    color: colorsDanger,
+    color: WHITE,
   },
 });

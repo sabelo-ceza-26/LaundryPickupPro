@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
   useFonts,
@@ -37,45 +38,47 @@ type ToggleRow = {
   key: 'push' | 'email' | 'sms' | 'location';
 };
 
-const TEAL = '#0F363F';
+const TEAL = '#0E9AA7';
 const ICON_DARK = '#2B3642';
 const TEXT_DARK = '#1F2933';
 const TEXT_MUTED = '#7A869A';
 const BORDER = '#E8ECF1';
 const WHITE = '#FFFFFF';
 const DANGER = '#E5484D';
+const SECTION = '#0E7A86';
+const GRADIENT_RED = ['#FF7A70', '#E5484D'] as const;
 
 const toggleRows: ToggleRow[] = [
   {
     label: 'Push notifications',
     hint: 'Order status and reminders',
     icon: 'bell-outline',
-    tint: '#E2ECEB',
-    color: TEAL,
+    tint: '#E4EEFF',
+    color: '#2E6BFF',
     key: 'push',
   },
   {
     label: 'Email notifications',
     hint: 'Receipts and confirmations',
     icon: 'email-outline',
-    tint: '#E4EEFF',
-    color: '#2E6BFF',
+    tint: '#EFEBFF',
+    color: '#7857FF',
     key: 'email',
   },
   {
     label: 'SMS updates',
     hint: 'Delivery time updates',
     icon: 'message-text-outline',
-    tint: '#DDF8E8',
-    color: '#00A85A',
+    tint: '#D6F0F4',
+    color: '#0E9AA7',
     key: 'sms',
   },
   {
     label: 'Location services',
     hint: 'Faster pickup & drop-off',
     icon: 'map-marker-radius-outline',
-    tint: '#FFF0B8',
-    color: '#F4A928',
+    tint: '#DDF8E8',
+    color: '#00A85A',
     key: 'location',
   },
 ];
@@ -150,8 +153,8 @@ export default function SettingsScreen({ navigation }: Props) {
               <Switch
                 value={prefs[row.key]}
                 onValueChange={() => toggle(row.key)}
-                trackColor={{ false: '#D5DCE3', true: '#9FC2BD' }}
-                thumbColor={prefs[row.key] ? TEAL : '#F5F7FA'}
+                trackColor={{ false: '#D5DCE3', true: '#0E9AA7' }}
+                thumbColor={prefs[row.key] ? '#FFFFFF' : '#F5F7FA'}
               />
             </View>
           ))}
@@ -165,8 +168,8 @@ export default function SettingsScreen({ navigation }: Props) {
               Alert.alert('Change password', 'A reset link will be sent to your email.')
             }
           >
-            <View style={[styles.rowIcon, { backgroundColor: '#E2ECEB' }]}>
-              <MaterialCommunityIcons name="lock-reset" size={20} color={TEAL} />
+            <View style={[styles.rowIcon, { backgroundColor: '#FFF0B8' }]}>
+              <MaterialCommunityIcons name="lock-reset" size={20} color="#E8960C" />
             </View>
             <View style={styles.rowBody}>
               <Text style={styles.rowLabel}>Change password</Text>
@@ -181,8 +184,8 @@ export default function SettingsScreen({ navigation }: Props) {
               Alert.alert('Privacy & Security', 'Your data is encrypted and never shared.')
             }
           >
-            <View style={[styles.rowIcon, { backgroundColor: '#DDF8E8' }]}>
-              <MaterialCommunityIcons name="shield-check-outline" size={20} color="#00A85A" />
+            <View style={[styles.rowIcon, { backgroundColor: '#FCE7F3' }]}>
+              <MaterialCommunityIcons name="shield-check-outline" size={20} color="#EC5E9B" />
             </View>
             <View style={styles.rowBody}>
               <Text style={styles.rowLabel}>Privacy &amp; Security</Text>
@@ -192,9 +195,12 @@ export default function SettingsScreen({ navigation }: Props) {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={styles.logoutButton} onPress={confirmLogout}>
-          <MaterialCommunityIcons name="logout" size={20} color={DANGER} />
-          <Text style={styles.logoutButtonText}>Log out</Text>
+        <TouchableOpacity activeOpacity={0.9} onPress={confirmLogout}>
+          <LinearGradient colors={GRADIENT_RED} style={styles.logoutButton}>
+            <View style={styles.shine} />
+            <MaterialCommunityIcons name="logout" size={20} color={WHITE} />
+            <Text style={styles.logoutButtonText}>Log out</Text>
+          </LinearGradient>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -223,6 +229,11 @@ const styles = StyleSheet.create({
     borderColor: BORDER,
     padding: 16,
     marginBottom: 22,
+    shadowColor: '#1F2933',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 2,
   },
   avatar: {
     width: 56,
@@ -261,7 +272,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 15,
-    color: TEXT_DARK,
+    color: SECTION,
     marginBottom: 10,
   },
   card: {
@@ -308,17 +319,30 @@ const styles = StyleSheet.create({
   logoutButton: {
     height: 54,
     borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: DANGER,
-    backgroundColor: WHITE,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
+    elevation: 3,
+    shadowColor: DANGER,
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.22,
+    shadowRadius: 10,
   },
   logoutButtonText: {
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 15,
-    color: DANGER,
+    color: WHITE,
     marginLeft: 8,
+  },
+  shine: {
+    position: 'absolute',
+    top: -30,
+    left: -30,
+    width: 90,
+    height: 120,
+    borderRadius: 45,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    transform: [{ rotate: '20deg' }],
   },
 });

@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
-  Alert,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -24,6 +25,7 @@ import {
 import BookingHeader from '../../components/BookingHeader';
 import BookingProgress from '../../components/BookingProgress';
 import DateTimePickerModal from '../../components/DateTimePickerModal';
+import FancyAlert from '../../components/FancyAlert';
 import { useBooking } from '../../context/BookingContext';
 import type { BookingStackParamList } from '../../navigation/BookingNavigator';
 import { colors } from '../../theme/colors';
@@ -39,32 +41,138 @@ const TEAL = '#0F363F';
 const TEAL_MID = '#1E5660';
 const TEAL_TINT = '#E2ECEB';
 const TEAL_TINT_2 = '#D3E5E3';
-const ICON_DARK = '#2B3642';
 const TEXT_DARK = '#1F2933';
 const TEXT_MUTED = '#7A869A';
 const BORDER = '#E8ECF1';
 
-const GRADIENT_TEAL = [TEAL_MID, TEAL] as const;
-const GRADIENT_TINT = [TEAL_TINT, TEAL_TINT_2] as const;
+const GRADIENT_VIBRANT = ['#2E6BFF', '#7857FF'] as const;
+const GRADIENT_POP = ['#33C9B2', '#2E6BFF'] as const;
+const GRADIENT_HERO = ['#17879B', '#0F4C63', '#0F363F'] as const;
+const GRADIENT_NEXT = ['#17879B', '#0E5E73'] as const;
 
-type SectionHeaderProps = {
-  title: string;
-  icon: SectionIcon;
+type Accent = {
+  main: string;
+  tint: string;
+  tint2: string;
 };
 
-function SectionHeader({ title, icon }: SectionHeaderProps) {
+const ACCENTS: Record<string, Accent> = {
+  teal: { main: TEAL, tint: TEAL_TINT, tint2: TEAL_TINT_2 },
+  blue: { main: '#2E6BFF', tint: '#EAF0FF', tint2: '#D9E5FF' },
+  purple: { main: '#7857FF', tint: '#F0EDFF', tint2: '#E0DBFF' },
+  amber: { main: '#E8860B', tint: '#FFF3DC', tint2: '#FFE7B8' },
+};
+
+type SectionHeaderProps = {
+  step: string;
+  title: string;
+  icon: SectionIcon;
+  accent: Accent;
+};
+
+function SectionHeader({ step, title, icon, accent }: SectionHeaderProps) {
   return (
     <View style={styles.sectionHeader}>
-      <View style={styles.sectionHeaderIcon}>
+      <View style={[styles.sectionHeaderStep, { backgroundColor: accent.tint }]}>
+        <Text style={[styles.sectionHeaderStepText, { color: accent.main }]}>
+          {step}
+        </Text>
+      </View>
+      <View style={[styles.sectionHeaderIcon, { backgroundColor: accent.main }]}>
         <MaterialCommunityIcons name={icon} size={15} color={colors.white} />
       </View>
       <Text style={styles.sectionTitle}>{title}</Text>
+      <View style={styles.sectionHeaderLine} />
     </View>
+  );
+}
+
+type AddressCardProps = {
+  icon: SectionIcon;
+  address: string;
+  hint: string;
+  emptyLabel: string;
+  accent: Accent;
+  onPress: () => void;
+};
+
+function AddressCard({
+  icon,
+  address,
+  hint,
+  emptyLabel,
+  accent,
+  onPress,
+}: AddressCardProps) {
+  const isEmpty = !address.trim();
+  return (
+    <LinearGradient
+      colors={[accent.tint, accent.tint2]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.addressCard}
+    >
+      <TouchableOpacity style={styles.addressInner} onPress={onPress}>
+        <View style={styles.addressIcon}>
+          <MaterialCommunityIcons name={icon} size={22} color={accent.main} />
+        </View>
+        <View style={styles.addressText}>
+          <Text
+            style={[styles.addressLine, isEmpty && styles.addressPlaceholder]}
+            numberOfLines={2}
+          >
+            {address || emptyLabel}
+          </Text>
+          <Text style={styles.addressHint}>{hint}</Text>
+        </View>
+        <View style={styles.changePill}>
+          <Text style={[styles.changeText, { color: accent.main }]}>
+            {isEmpty ? 'Add' : 'Change'}
+          </Text>
+          <MaterialCommunityIcons name="chevron-right" size={14} color={accent.main} />
+        </View>
+      </TouchableOpacity>
+    </LinearGradient>
+  );
+}
+
+type DateTimeCardProps = {
+  icon: SectionIcon;
+  label: string;
+  value: string;
+  accent: Accent;
+  onPress: () => void;
+};
+
+function DateTimeCard({ icon, label, value, accent, onPress }: DateTimeCardProps) {
+  return (
+    <TouchableOpacity style={styles.fieldCard} onPress={onPress}>
+      <LinearGradient
+        colors={[accent.tint, accent.tint2]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.fieldCardBg}
+      >
+        <View style={styles.fieldIcon}>
+          <MaterialCommunityIcons name={icon} size={20} color={accent.main} />
+        </View>
+        <Text style={styles.fieldLabel}>{label}</Text>
+        <Text
+          style={[styles.fieldValue, { color: accent.main }]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.8}
+        >
+          {value}
+        </Text>
+      </LinearGradient>
+    </TouchableOpacity>
   );
 }
 
 export default function BookPickupScreen({ navigation }: Props) {
   const { booking, updateBooking } = useBooking();
+  const scrollViewRef = useRef<ScrollView>(null);
   const [fontsLoaded] = useFonts({
     Poppins_400Regular,
     Poppins_500Medium,
@@ -77,6 +185,9 @@ export default function BookPickupScreen({ navigation }: Props) {
     kind: 'Pickup' | 'Delivery';
     value: string;
   } | null>(null);
+  const [alert, setAlert] = useState<{ title: string; message: string } | null>(
+    null
+  );
 
   if (!fontsLoaded) return null;
 
@@ -135,6 +246,24 @@ export default function BookPickupScreen({ navigation }: Props) {
     }
   };
 
+  const handleNext = () => {
+    const missing: string[] = [];
+    if (!booking.pickupAddress.trim()) {
+      missing.push('a pickup address');
+    }
+    if (!booking.deliveryAddress.trim()) {
+      missing.push('a delivery address');
+    }
+    if (missing.length > 0) {
+      setAlert({
+        title: 'Almost there',
+        message: `Please add ${missing.join(' and ')} before continuing.`,
+      });
+      return;
+    }
+    navigation.navigate('Step2');
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <BookingHeader
@@ -142,171 +271,188 @@ export default function BookPickupScreen({ navigation }: Props) {
         onBack={() => navigation.goBack()}
       />
 
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.container}
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <BookingProgress current={1} title="Pickup details" />
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.scroll}
+          contentContainerStyle={styles.container}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+          automaticallyAdjustKeyboardInsets
+        >
+        <LinearGradient colors={GRADIENT_HERO} style={styles.hero}>
+          <View style={styles.heroCircleA} />
+          <View style={styles.heroCircleB} />
+          <View style={styles.heroCircleC} />
+          <View style={styles.heroRow}>
+            <View style={styles.heroContent}>
+              <View style={styles.heroTitleRow}>
+                <Text style={styles.heroTitle}>Schedule your </Text>
+                <LinearGradient
+                  colors={GRADIENT_POP}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.heroHighlight}
+                >
+                  <Text style={styles.heroHighlightText}>pickup</Text>
+                </LinearGradient>
+              </View>
+              <Text style={styles.heroSubtitle}>
+                Tell us where and when to collect your laundry.
+              </Text>
+            </View>
+            <View style={styles.heroIconWrap}>
+              <LinearGradient
+                colors={GRADIENT_VIBRANT}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.heroIconCircle}
+              >
+                <MaterialCommunityIcons
+                  name="truck-delivery-outline"
+                  size={40}
+                  color={colors.white}
+                />
+              </LinearGradient>
+            </View>
+          </View>
+        </LinearGradient>
+
+        <View style={styles.progressWrap}>
+          <BookingProgress current={1} title="Pickup details" />
+        </View>
 
         <View style={styles.section}>
-          <SectionHeader title="Service" icon="truck-delivery-outline" />
-          <LinearGradient colors={GRADIENT_TEAL} style={styles.serviceCard}>
-            <View style={styles.serviceIcon}>
+          <SectionHeader
+            step="1"
+            title="Addresses"
+            icon="map-marker-outline"
+            accent={ACCENTS.blue}
+          />
+          <AddressCard
+            icon="map-marker-outline"
+            address={booking.pickupAddress}
+            hint="Where we collect your laundry"
+            emptyLabel="Add your pickup address"
+            accent={ACCENTS.blue}
+            onPress={() => openAddress('Pickup')}
+          />
+          <AddressCard
+            icon="home-variant-outline"
+            address={booking.deliveryAddress}
+            hint="Where we deliver your laundry"
+            emptyLabel="Add your delivery address"
+            accent={ACCENTS.purple}
+            onPress={() => openAddress('Delivery')}
+          />
+        </View>
+
+        <View style={styles.section}>
+          <SectionHeader
+            step="2"
+            title="Schedule"
+            icon="calendar-clock"
+            accent={ACCENTS.purple}
+          />
+          <View style={styles.fieldRow}>
+            <DateTimeCard
+              icon="calendar-outline"
+              label="Pickup Date"
+              value={formatBookingDate(booking.pickupDate)}
+              accent={ACCENTS.blue}
+              onPress={() => setActivePicker('pickupDate')}
+            />
+            <DateTimeCard
+              icon="clock-outline"
+              label="Pickup Time"
+              value={formatTimeWindow(booking.pickupTime)}
+              accent={ACCENTS.blue}
+              onPress={() => setActivePicker('pickupTime')}
+            />
+          </View>
+          <View style={styles.fieldRow}>
+            <DateTimeCard
+              icon="calendar-outline"
+              label="Delivery Date"
+              value={formatBookingDate(booking.deliveryDate)}
+              accent={ACCENTS.purple}
+              onPress={() => setActivePicker('deliveryDate')}
+            />
+            <DateTimeCard
+              icon="clock-outline"
+              label="Delivery Time"
+              value={formatTimeWindow(booking.deliveryTime)}
+              accent={ACCENTS.purple}
+              onPress={() => setActivePicker('deliveryTime')}
+            />
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <SectionHeader
+            step="3"
+            title="Special Instructions"
+            icon="note-edit-outline"
+            accent={ACCENTS.amber}
+          />
+          <LinearGradient
+            colors={[ACCENTS.amber.tint, ACCENTS.amber.tint2]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.instructionsWrap}
+          >
+            <View style={styles.instructionsIcon}>
               <MaterialCommunityIcons
-                name="truck-delivery-outline"
-                size={26}
-                color={TEAL}
+                name="note-edit-outline"
+                size={18}
+                color={ACCENTS.amber.main}
               />
             </View>
-            <View style={styles.serviceText}>
-              <Text style={styles.serviceTitle}>Pickup &amp; Drop Off</Text>
-              <Text style={styles.serviceSubtitle}>
-                (We only pick up and drop off)
-              </Text>
-            </View>
-            <View style={styles.serviceCheck}>
-              <MaterialCommunityIcons name="check" size={15} color={colors.white} />
-            </View>
-          </LinearGradient>
-        </View>
-
-        <View style={styles.section}>
-          <SectionHeader title="Pickup Address" icon="map-marker-outline" />
-          <TouchableOpacity
-            style={styles.addressCard}
-            onPress={() => openAddress('Pickup')}
-          >
-            <LinearGradient colors={GRADIENT_TINT} style={styles.addressIcon}>
-              <MaterialCommunityIcons name="map-marker-outline" size={22} color={TEAL} />
-            </LinearGradient>
-            <View style={styles.addressText}>
-              <Text style={styles.addressLine}>{booking.pickupAddress}</Text>
-              <Text style={styles.addressHint}>Where we collect your laundry</Text>
-            </View>
-            <View style={styles.changePill}>
-              <Text style={styles.changeText}>Change</Text>
-              <MaterialCommunityIcons name="chevron-right" size={14} color={TEAL} />
-            </View>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.section}>
-          <SectionHeader title="Delivery Address" icon="home-variant-outline" />
-          <TouchableOpacity
-            style={styles.addressCard}
-            onPress={() => openAddress('Delivery')}
-          >
-            <LinearGradient colors={GRADIENT_TINT} style={styles.addressIcon}>
-              <MaterialCommunityIcons name="home-variant-outline" size={22} color={TEAL} />
-            </LinearGradient>
-            <View style={styles.addressText}>
-              <Text style={styles.addressLine}>{booking.deliveryAddress}</Text>
-              <Text style={styles.addressHint}>Where we deliver your laundry</Text>
-            </View>
-            <View style={styles.changePill}>
-              <Text style={styles.changeText}>Change</Text>
-              <MaterialCommunityIcons name="chevron-right" size={14} color={TEAL} />
-            </View>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.section}>
-          <SectionHeader title="Pickup Date &amp; Time" icon="calendar-clock" />
-          <View style={styles.fieldRow}>
-            <TouchableOpacity
-              style={styles.fieldCard}
-              onPress={() => setActivePicker('pickupDate')}
-            >
-              <LinearGradient colors={GRADIENT_TINT} style={styles.fieldIcon}>
-                <MaterialCommunityIcons name="calendar-outline" size={20} color={TEAL} />
-              </LinearGradient>
-              <Text style={styles.fieldLabel}>Pickup Date</Text>
-              <Text style={styles.fieldValue}>
-                {formatBookingDate(booking.pickupDate)}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.fieldCard}
-              onPress={() => setActivePicker('pickupTime')}
-            >
-              <LinearGradient colors={GRADIENT_TINT} style={styles.fieldIcon}>
-                <MaterialCommunityIcons name="clock-outline" size={20} color={TEAL} />
-              </LinearGradient>
-              <Text style={styles.fieldLabel}>Pickup Time</Text>
-              <Text style={styles.fieldValue}>
-                {formatTimeWindow(booking.pickupTime)}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <SectionHeader title="Delivery Date &amp; Time" icon="clock-fast" />
-          <View style={styles.fieldRow}>
-            <TouchableOpacity
-              style={styles.fieldCard}
-              onPress={() => setActivePicker('deliveryDate')}
-            >
-              <LinearGradient colors={GRADIENT_TINT} style={styles.fieldIcon}>
-                <MaterialCommunityIcons name="calendar-outline" size={20} color={TEAL} />
-              </LinearGradient>
-              <Text style={styles.fieldLabel}>Delivery Date</Text>
-              <Text style={styles.fieldValue}>
-                {formatBookingDate(booking.deliveryDate)}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.fieldCard}
-              onPress={() => setActivePicker('deliveryTime')}
-            >
-              <LinearGradient colors={GRADIENT_TINT} style={styles.fieldIcon}>
-                <MaterialCommunityIcons name="clock-outline" size={20} color={TEAL} />
-              </LinearGradient>
-              <Text style={styles.fieldLabel}>Delivery Time</Text>
-              <Text style={styles.fieldValue}>
-                {formatTimeWindow(booking.deliveryTime)}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <SectionHeader title="Special Instructions" icon="note-edit-outline" />
-          <View style={styles.instructionsWrap}>
-            <MaterialCommunityIcons
-              name="note-edit-outline"
-              size={18}
-              color={TEAL}
-              style={styles.instructionsIcon}
-            />
             <TextInput
               style={styles.instructionsInput}
-              placeholder="Leave laundry bags on the front porch if not answered."
+              placeholder="Anything else we should know? (optional)"
               placeholderTextColor={TEXT_MUTED}
               value={booking.instructions}
               onChangeText={(text) => updateBooking({ instructions: text })}
+              onFocus={() =>
+                scrollViewRef.current?.scrollToEnd({ animated: true })
+              }
               multiline
               textAlignVertical="top"
             />
-          </View>
-        </View>
-      </ScrollView>
-
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.nextButtonTouch}
-          activeOpacity={0.9}
-          onPress={() => navigation.navigate('Step2')}
-        >
-          <LinearGradient colors={GRADIENT_TEAL} style={styles.nextButton}>
-            <Text style={styles.nextButtonText}>Next</Text>
-            <View style={styles.nextArrow}>
-              <MaterialCommunityIcons name="arrow-right" size={18} color={colors.white} />
-            </View>
           </LinearGradient>
-        </TouchableOpacity>
-      </View>
+        </View>
+
+        <View style={styles.submitWrap}>
+          <Text style={styles.footerHint}>
+            You can review everything before confirming.
+          </Text>
+          <TouchableOpacity
+            style={styles.nextButtonTouch}
+            activeOpacity={0.9}
+            onPress={handleNext}
+          >
+            <LinearGradient colors={GRADIENT_NEXT} style={styles.nextButton}>
+              <MaterialCommunityIcons
+                name="rocket-launch-outline"
+                size={20}
+                color={colors.white}
+                style={styles.nextIcon}
+              />
+              <Text style={styles.nextButtonText}>Next</Text>
+              <View style={styles.nextArrow}>
+                <MaterialCommunityIcons name="arrow-right" size={18} color={colors.white} />
+              </View>
+              <View style={styles.nextShine} />
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       <DateTimePickerModal
         visible={activePicker !== null}
@@ -315,6 +461,17 @@ export default function BookPickupScreen({ navigation }: Props) {
         value={pickerValue}
         onChange={onPickerSelect}
         onClose={() => setActivePicker(null)}
+      />
+
+      <FancyAlert
+        visible={alert !== null}
+        title={alert?.title ?? ''}
+        message={alert?.message ?? ''}
+        icon="alert-circle-outline"
+        iconColor="#E5484D"
+        iconBackground="#FDE7E8"
+        buttonText="Got it"
+        onClose={() => setAlert(null)}
       />
 
       <Modal
@@ -359,25 +516,133 @@ export default function BookPickupScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
+  flex: {
+    flex: 1,
+  },
   safeArea: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: TEAL,
   },
   scroll: {
-    backgroundColor: '#F7F9FB',
+    backgroundColor: '#F3F6FC',
   },
   container: {
+    paddingBottom: 36,
+  },
+  hero: {
+    borderRadius: 28,
+    marginHorizontal: 20,
+    marginTop: 12,
+    paddingVertical: 26,
+    paddingHorizontal: 22,
+    overflow: 'hidden',
+    elevation: 5,
+    shadowColor: TEAL,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.22,
+    shadowRadius: 14,
+  },
+  heroCircleA: {
+    position: 'absolute',
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(120, 87, 255, 0.22)',
+    top: -70,
+    right: -50,
+  },
+  heroCircleB: {
+    position: 'absolute',
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: 'rgba(46, 107, 255, 0.24)',
+    bottom: -32,
+    right: 110,
+  },
+  heroCircleC: {
+    position: 'absolute',
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: 'rgba(51, 201, 178, 0.28)',
+    top: 18,
+    left: -14,
+  },
+  heroRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  heroContent: {
+    flex: 1,
+    paddingRight: 12,
+  },
+  heroTitle: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 22,
+    color: colors.white,
+  },
+  heroTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
+  heroHighlight: {
+    borderRadius: 9,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    marginBottom: 2,
+  },
+  heroHighlightText: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 22,
+    color: colors.white,
+  },
+  heroSubtitle: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 12.5,
+    lineHeight: 19,
+    color: 'rgba(255, 255, 255, 0.82)',
+    marginTop: 4,
+  },
+  heroIconWrap: {
+    alignItems: 'center',
+  },
+  heroIconCircle: {
+    width: 82,
+    height: 82,
+    borderRadius: 41,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  progressWrap: {
     paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 110,
+    paddingTop: 20,
   },
   section: {
-    marginTop: 22,
+    marginTop: 24,
+    paddingHorizontal: 20,
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 12,
+  },
+  sectionHeaderStep: {
+    width: 28,
+    height: 28,
+    borderRadius: 9,
+    backgroundColor: TEAL_TINT,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  sectionHeaderStepText: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 12,
+    color: TEAL,
   },
   sectionHeaderIcon: {
     width: 26,
@@ -393,68 +658,33 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: TEXT_DARK,
   },
-  serviceCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 18,
-    paddingVertical: 20,
-    paddingHorizontal: 16,
-    elevation: 4,
-    shadowColor: TEAL,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-  },
-  serviceIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 15,
-    backgroundColor: colors.white,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  serviceText: {
+  sectionHeaderLine: {
     flex: 1,
-    marginLeft: 14,
-  },
-  serviceTitle: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 16,
-    color: colors.white,
-  },
-  serviceSubtitle: {
-    fontFamily: 'Poppins_400Regular',
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.8)',
-    marginTop: 2,
-  },
-  serviceCheck: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.28)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    height: 1,
+    backgroundColor: BORDER,
+    marginLeft: 10,
   },
   addressCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.white,
     borderRadius: 18,
-    borderWidth: 1,
-    borderColor: BORDER,
-    paddingVertical: 16,
-    paddingHorizontal: 16,
+    marginBottom: 12,
+    overflow: 'hidden',
     elevation: 1,
     shadowColor: '#26384A',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
   },
+  addressInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+  },
   addressIcon: {
     width: 44,
     height: 44,
     borderRadius: 14,
+    backgroundColor: colors.white,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -466,6 +696,10 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_500Medium',
     fontSize: 14,
     color: TEXT_DARK,
+  },
+  addressPlaceholder: {
+    fontFamily: 'Poppins_400Regular',
+    color: TEXT_MUTED,
   },
   addressHint: {
     fontFamily: 'Poppins_400Regular',
@@ -479,36 +713,37 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 16,
-    backgroundColor: TEAL_TINT,
+    backgroundColor: colors.white,
   },
   changeText: {
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 12,
-    color: TEAL,
     marginRight: 2,
   },
   fieldRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginBottom: 12,
   },
   fieldCard: {
     width: '48%',
-    backgroundColor: colors.white,
     borderRadius: 18,
-    borderWidth: 1,
-    borderColor: BORDER,
-    paddingVertical: 16,
-    paddingHorizontal: 14,
+    overflow: 'hidden',
     elevation: 1,
     shadowColor: '#26384A',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
   },
+  fieldCardBg: {
+    paddingVertical: 16,
+    paddingHorizontal: 14,
+  },
   fieldIcon: {
     width: 38,
     height: 38,
     borderRadius: 12,
+    backgroundColor: colors.white,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 10,
@@ -525,37 +760,38 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   instructionsWrap: {
-    backgroundColor: colors.white,
     borderRadius: 18,
-    borderWidth: 1,
-    borderColor: BORDER,
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingTop: 16,
+    padding: 16,
+    overflow: 'hidden',
   },
   instructionsIcon: {
-    marginRight: 10,
-    marginTop: 2,
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    backgroundColor: colors.white,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
   instructionsInput: {
     flex: 1,
-    minHeight: 110,
+    minHeight: 90,
     padding: 0,
     fontFamily: 'Poppins_400Regular',
     fontSize: 14,
     color: TEXT_DARK,
   },
-  footer: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: colors.background,
+  submitWrap: {
+    marginTop: 28,
     paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 16,
-    borderTopWidth: 1,
-    borderTopColor: BORDER,
+  },
+  footerHint: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 11,
+    color: TEXT_MUTED,
+    textAlign: 'center',
+    marginBottom: 8,
   },
   nextButtonTouch: {
     borderRadius: 18,
@@ -564,13 +800,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    height: 58,
-    borderRadius: 18,
-    elevation: 4,
-    shadowColor: TEAL,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
+    height: 60,
+    borderRadius: 20,
+    overflow: 'hidden',
+    elevation: 6,
+    shadowColor: '#0E5E73',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 14,
+  },
+  nextShine: {
+    position: 'absolute',
+    top: -30,
+    left: -30,
+    width: 90,
+    height: 120,
+    borderRadius: 45,
+    backgroundColor: 'rgba(255, 255, 255, 0.14)',
+    transform: [{ rotate: '20deg' }],
+  },
+  nextIcon: {
+    marginRight: 8,
   },
   nextButtonText: {
     fontFamily: 'Poppins_600SemiBold',

@@ -32,17 +32,21 @@ type SavedAddress = {
   isDefault: boolean;
 };
 
-const TEAL = '#0F363F';
-const TEAL_MID = '#1E5660';
-const TEAL_TINT = '#E2ECEB';
-const ICON_DARK = '#2B3642';
+const TEAL = '#0E9AA7';
+const TEAL_TINT = '#D6F0F4';
+const BLUE = '#2E6BFF';
+const BLUE_TINT = '#E4EEFF';
+const GREEN = '#00A85A';
+const GREEN_TINT = '#DDF8E8';
+const RED = '#E5484D';
+const RED_TINT = '#FDE7E8';
 const TEXT_DARK = '#1F2933';
 const TEXT_MUTED = '#7A869A';
 const BORDER = '#E8ECF1';
 const WHITE = '#FFFFFF';
-const DANGER = '#E5484D';
 
-const GRADIENT_TEAL = [TEAL_MID, TEAL] as const;
+const GRADIENT_VIBRANT = ['#2E6BFF', '#7857FF'] as const;
+const GRADIENT_GREEN = ['#00A85A', '#0B7A50'] as const;
 
 const initialAddresses: SavedAddress[] = [
   {
@@ -167,15 +171,15 @@ export default function AdressesScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
+      <LinearGradient colors={GRADIENT_VIBRANT} style={styles.header}>
         <TouchableOpacity style={styles.headerIcon} onPress={() => navigation.goBack()}>
-          <MaterialCommunityIcons name="arrow-left" size={24} color={ICON_DARK} />
+          <MaterialCommunityIcons name="arrow-left" size={24} color={WHITE} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Addresses</Text>
-        <TouchableOpacity style={styles.headerIcon} onPress={openAdd}>
-          <MaterialCommunityIcons name="plus" size={24} color={TEAL} />
+        <TouchableOpacity style={styles.headerAdd} onPress={openAdd}>
+          <MaterialCommunityIcons name="plus" size={24} color={BLUE} />
         </TouchableOpacity>
-      </View>
+      </LinearGradient>
 
       <FlatList
         data={addresses}
@@ -185,7 +189,9 @@ export default function AdressesScreen({ navigation }: Props) {
         ListHeaderComponent={
           addresses.length > 0 ? (
             <View style={styles.defaultNotice}>
-              <MaterialCommunityIcons name="home-map-marker" size={20} color={TEAL} />
+              <View style={styles.defaultNoticeIcon}>
+                <MaterialCommunityIcons name="home-map-marker" size={20} color={GREEN} />
+              </View>
               <Text style={styles.defaultNoticeText}>
                 Default pickup address:{' '}
                 <Text style={styles.defaultNoticeStrong}>
@@ -197,7 +203,7 @@ export default function AdressesScreen({ navigation }: Props) {
         }
         ListEmptyComponent={
           <View style={styles.empty}>
-            <MaterialCommunityIcons name="map-marker-plus-outline" size={52} color={TEAL_TINT} />
+            <MaterialCommunityIcons name="map-marker-plus-outline" size={52} color="#C4D2E0" />
             <Text style={styles.emptyTitle}>No saved addresses</Text>
             <Text style={styles.emptySubtitle}>
               Add a home or work address to make booking faster.
@@ -210,41 +216,47 @@ export default function AdressesScreen({ navigation }: Props) {
               <MaterialCommunityIcons
                 name={item.isDefault ? 'home-variant' : 'map-marker-outline'}
                 size={22}
-                color={item.isDefault ? WHITE : TEAL}
+                color={item.isDefault ? TEAL : BLUE}
               />
             </View>
             <View style={styles.cardBody}>
               <View style={styles.cardTopRow}>
                 <Text style={styles.cardLabel}>{item.label}</Text>
                 {item.isDefault && (
-                  <View style={styles.defaultBadge}>
+                  <LinearGradient colors={GRADIENT_GREEN} style={styles.defaultBadge}>
                     <Text style={styles.defaultBadgeText}>Default</Text>
-                  </View>
+                  </LinearGradient>
                 )}
               </View>
               <Text style={styles.cardAddress}>{item.address}</Text>
               <View style={styles.cardActions}>
                 <TouchableOpacity
-                  style={styles.cardAction}
+                  style={[styles.cardAction, styles.cardActionEdit]}
                   onPress={() => openEdit(item)}
                 >
-                  <MaterialCommunityIcons name="pencil-outline" size={16} color={TEAL} />
+                  <MaterialCommunityIcons name="pencil-outline" size={14} color={BLUE} />
                   <Text style={styles.cardActionText}>Edit</Text>
                 </TouchableOpacity>
                 {!item.isDefault && (
                   <TouchableOpacity
-                    style={styles.cardAction}
+                    style={[styles.cardAction, styles.cardActionTeal]}
                     onPress={() => handleSetDefault(item)}
                   >
-                    <MaterialCommunityIcons name="check-circle-outline" size={16} color={TEAL} />
-                    <Text style={styles.cardActionText}>Set default</Text>
+                    <MaterialCommunityIcons name="check-circle-outline" size={14} color={TEAL} />
+                    <Text style={[styles.cardActionText, styles.cardActionTextTeal]}>
+                      Set default
+                    </Text>
                   </TouchableOpacity>
                 )}
                 <TouchableOpacity
-                  style={styles.cardAction}
+                  style={[
+                    styles.cardAction,
+                    styles.cardActionDanger,
+                    !item.isDefault && styles.cardActionLast,
+                  ]}
                   onPress={() => handleDelete(item)}
                 >
-                  <MaterialCommunityIcons name="trash-can-outline" size={16} color={DANGER} />
+                  <MaterialCommunityIcons name="trash-can-outline" size={14} color={RED} />
                   <Text style={[styles.cardActionText, styles.cardActionTextDanger]}>
                     Delete
                   </Text>
@@ -311,7 +323,8 @@ export default function AdressesScreen({ navigation }: Props) {
                 <Text style={styles.modalCancelText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.modalSaveTouch} activeOpacity={0.9} onPress={handleSave}>
-                <LinearGradient colors={GRADIENT_TEAL} style={styles.modalSave}>
+                <LinearGradient colors={GRADIENT_VIBRANT} style={styles.modalSave}>
+                  <View style={styles.shine} />
                   <Text style={styles.modalSaveText}>Save</Text>
                 </LinearGradient>
               </TouchableOpacity>
@@ -333,22 +346,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingTop: 12,
+    paddingBottom: 18,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
   },
   headerIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#F3F6F9',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.22)',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: BORDER,
+  },
+  headerAdd: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: WHITE,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#1F2933',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
+    elevation: 3,
   },
   headerTitle: {
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 18,
-    color: TEXT_DARK,
+    color: WHITE,
   },
   listContent: {
     padding: 20,
@@ -357,21 +384,29 @@ const styles = StyleSheet.create({
   defaultNotice: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F0F5F4',
+    backgroundColor: GREEN_TINT,
     borderRadius: 16,
     padding: 14,
     marginBottom: 16,
+  },
+  defaultNoticeIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: WHITE,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
   },
   defaultNoticeText: {
     flex: 1,
     fontFamily: 'Poppins_400Regular',
     fontSize: 12,
-    color: '#4A5C64',
-    marginLeft: 10,
+    color: '#3E7A5E',
   },
   defaultNoticeStrong: {
     fontFamily: 'Poppins_600SemiBold',
-    color: TEXT_DARK,
+    color: '#0B7A50',
   },
   card: {
     flexDirection: 'row',
@@ -381,18 +416,23 @@ const styles = StyleSheet.create({
     borderColor: BORDER,
     padding: 14,
     marginBottom: 12,
+    shadowColor: '#1F2933',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 2,
   },
   cardIcon: {
     width: 44,
     height: 44,
     borderRadius: 14,
-    backgroundColor: TEAL_TINT,
+    backgroundColor: BLUE_TINT,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
   cardIconDefault: {
-    backgroundColor: TEAL,
+    backgroundColor: TEAL_TINT,
   },
   cardBody: {
     flex: 1,
@@ -408,15 +448,14 @@ const styles = StyleSheet.create({
   },
   defaultBadge: {
     marginLeft: 8,
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     paddingVertical: 3,
     borderRadius: 10,
-    backgroundColor: TEAL_TINT,
   },
   defaultBadgeText: {
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 9,
-    color: TEAL,
+    color: WHITE,
   },
   cardAddress: {
     fontFamily: 'Poppins_400Regular',
@@ -429,18 +468,38 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   cardAction: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 16,
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+    paddingVertical: 8,
+    borderRadius: 10,
+    marginRight: 8,
+  },
+  cardActionLast: {
+    marginRight: 0,
+  },
+  cardActionEdit: {
+    backgroundColor: BLUE_TINT,
+  },
+  cardActionTeal: {
+    backgroundColor: TEAL_TINT,
+  },
+  cardActionDanger: {
+    backgroundColor: RED_TINT,
   },
   cardActionText: {
     fontFamily: 'Poppins_500Medium',
     fontSize: 12,
-    color: TEAL,
+    color: BLUE,
     marginLeft: 4,
   },
+  cardActionTextTeal: {
+    color: TEAL,
+  },
   cardActionTextDanger: {
-    color: DANGER,
+    color: RED,
   },
   empty: {
     alignItems: 'center',
@@ -548,10 +607,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 12,
+    overflow: 'hidden',
+    alignItems: 'center',
   },
   modalSaveText: {
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 15,
     color: WHITE,
+  },
+  shine: {
+    position: 'absolute',
+    top: -30,
+    left: -30,
+    width: 90,
+    height: 120,
+    borderRadius: 45,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    transform: [{ rotate: '20deg' }],
   },
 });

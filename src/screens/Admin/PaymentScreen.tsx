@@ -1,25 +1,57 @@
 import React, { useState } from 'react';
 import {
-  Alert,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Switch,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import {
+  useFonts,
+  Poppins_400Regular,
+  Poppins_500Medium,
+  Poppins_600SemiBold,
+  Poppins_700Bold,
+} from '@expo-google-fonts/poppins';
 
 import type { AdminStackParamList } from '../../navigation/AdminNavigator';
+import { useAdmin } from '../../context/AdminContext';
+import type { Pricing } from '../../context/AdminContext';
+import FancyAlert from '../../components/FancyAlert';
 
 type Props = NativeStackScreenProps<AdminStackParamList, 'Payments'>;
+
+const BLUE = '#2E6BFF';
+const BLUE_TINT = '#E4EEFF';
+const PURPLE = '#7857FF';
+const TEAL_HEADING = '#0E7A86';
+const TEXT_DARK = '#1F2933';
+const TEXT_MUTED = '#7A869A';
+const BORDER = '#E8ECF1';
+const WHITE = '#FFFFFF';
+const DANGER = '#E5484D';
+
+const GRADIENT_VIBRANT = [BLUE, PURPLE] as const;
+
+type Icon = keyof typeof MaterialCommunityIcons.glyphMap;
 
 type ServiceItemProps = {
   title: string;
   subtitle: string;
   price: string;
   enabled: boolean;
+  icon: Icon;
+  tint: string;
+  color: string;
   onToggle: () => void;
 };
 
@@ -28,116 +60,365 @@ function ServiceItem({
   subtitle,
   price,
   enabled,
+  icon,
+  tint,
+  color,
   onToggle,
 }: ServiceItemProps) {
   return (
     <View style={styles.serviceCard}>
-      <View style={styles.iconPlaceholder} />
+      <View style={[styles.iconWrap, { backgroundColor: tint }]}>
+        <MaterialCommunityIcons name={icon} size={20} color={color} />
+      </View>
 
       <View style={styles.serviceDetails}>
         <Text style={styles.serviceTitle}>{title}</Text>
         <Text style={styles.serviceSubtitle}>{subtitle}</Text>
       </View>
 
-      <Text style={styles.priceText}>{price}</Text>
-
-      <Switch
-        value={enabled}
-        onValueChange={onToggle}
-        trackColor={{
-          false: '#D8DEE6',
-          true: '#7ADDC5',
-        }}
-        thumbColor={enabled ? '#0DBB8B' : '#F4F4F4'}
-      />
+      <View style={styles.serviceRight}>
+        <Text style={styles.priceText}>{price}</Text>
+        <Switch
+          value={enabled}
+          onValueChange={onToggle}
+          trackColor={{ false: '#D5DCE3', true: '#9EB5EB' }}
+          thumbColor={enabled ? BLUE : '#F4F4F4'}
+        />
+      </View>
     </View>
   );
 }
 
+type PricingKey = keyof Pricing;
+
+const PRICING_FIELDS: {
+  key: PricingKey;
+  label: string;
+  hint: string;
+  suffix: string;
+}[] = [
+  { key: 'smallLoad', label: '0–5 kg', hint: 'Per kilogram', suffix: '/kg' },
+  { key: 'mediumLoad', label: '5–10 kg', hint: 'Per kilogram', suffix: '/kg' },
+  { key: 'largeLoad', label: '10+ kg', hint: 'Per kilogram', suffix: '/kg' },
+  { key: 'bag', label: 'Standard bag', hint: 'Up to 10 kg per bag', suffix: 'per bag' },
+  { key: 'delivery', label: 'Pickup & delivery', hint: 'Per trip', suffix: 'per trip' },
+  { key: 'express', label: 'Express (same-day)', hint: 'Flat add-on', suffix: 'per order' },
+];
+
+type SettingsModalProps = {
+  visible: boolean;
+  pricing: Pricing;
+  onClose: () => void;
+  onSave: (pricing: Pricing) => void;
+};
+
+function PricingSettingsModal({
+  visible,
+  pricing,
+  onClose,
+  onSave,
+}: SettingsModalProps) {
+  const [drafts, setDrafts] = useState<Record<PricingKey, string>>(() => {
+    const next = {} as Record<PricingKey, string>;
+    PRICING_FIELDS.forEach((field) => {
+      next[field.key] = String(pricing[field.key].price);
+    });
+    return next;
+  });
+  const [enabled, setEnabled] = useState<Record<PricingKey, boolean>>(() => {
+    const next = {} as Record<PricingKey, boolean>;
+    PRICING_FIELDS.forEach((field) => {
+      next[field.key] = pricing[field.key].enabled;
+    });
+    return next;
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const handleShow = () => {
+    const nextDrafts: Record<PricingKey, string> = {} as Record<PricingKey, string>;
+    const nextEnabled: Record<PricingKey, boolean> = {} as Record<PricingKey, boolean>;
+    PRICING_FIELDS.forEach((field) => {
+      nextDrafts[field.key] = String(pricing[field.key].price);
+      nextEnabled[field.key] = pricing[field.key].enabled;
+    });
+    setDrafts(nextDrafts);
+    setEnabled(nextEnabled);
+    setErrors({});
+  };
+
+  const handleSave = () => {
+    const nextErrors: Record<string, string> = {};
+    const next: Partial<Pricing> = {};
+
+    PRICING_FIELDS.forEach((field) => {
+      const value = Number(drafts[field.key]);
+      if (!drafts[field.key].trim() || Number.isNaN(value) || value <= 0) {
+        nextErrors[field.key] = 'Enter a valid price';
+      } else {
+        next[field.key] = {
+          price: value,
+          enabled: enabled[field.key],
+        };
+      }
+    });
+
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) return;
+
+    onSave(next as Pricing);
+  };
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+      onShow={handleShow}
+    >
+      <KeyboardAvoidingView
+        style={styles.overlay}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <TouchableOpacity
+          style={styles.backdropTouch}
+          activeOpacity={1}
+          onPress={onClose}
+        />
+        <View style={styles.sheet}>
+          <LinearGradient colors={GRADIENT_VIBRANT} style={styles.sheetHeader}>
+            <View style={styles.shine} />
+            <View style={styles.sheetHeaderRow}>
+              <View style={styles.sheetHeaderIcon}>
+                <MaterialCommunityIcons name="cog-outline" size={20} color={WHITE} />
+              </View>
+              <Text style={styles.sheetHeaderTitle}>Pricing Settings</Text>
+              <TouchableOpacity
+                style={styles.sheetCloseButton}
+                activeOpacity={0.85}
+                onPress={onClose}
+              >
+                <MaterialCommunityIcons name="close" size={20} color={WHITE} />
+              </TouchableOpacity>
+            </View>
+          </LinearGradient>
+
+          <ScrollView
+            style={styles.sheetScroll}
+            contentContainerStyle={styles.sheetContainer}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            <Text style={styles.sheetNote}>
+              Adjust the price charged to customers. Toggled-off services are
+              hidden from the booking flow.
+            </Text>
+
+            {PRICING_FIELDS.map((field) => (
+              <View key={field.key} style={styles.settingRow}>
+                <View style={styles.settingBody}>
+                  <Text style={styles.settingLabel}>{field.label}</Text>
+                  <Text style={styles.settingHint}>{field.hint}</Text>
+                </View>
+                <View style={styles.settingInputWrap}>
+                  <Text style={styles.settingCurrency}>R</Text>
+                  <TextInput
+                    style={[
+                      styles.settingInput,
+                      errors[field.key] && styles.settingInputError,
+                    ]}
+                    value={drafts[field.key] ?? ''}
+                    onChangeText={(text) =>
+                      setDrafts((prev) => ({ ...prev, [field.key]: text }))
+                    }
+                    keyboardType="numeric"
+                    placeholder="0"
+                    placeholderTextColor={TEXT_MUTED}
+                  />
+                  <Text style={styles.settingSuffix}>{field.suffix}</Text>
+                </View>
+                <Switch
+                  value={enabled[field.key] ?? true}
+                  onValueChange={(value) =>
+                    setEnabled((prev) => ({ ...prev, [field.key]: value }))
+                  }
+                  trackColor={{ false: '#D5DCE3', true: '#9EB5EB' }}
+                  thumbColor={enabled[field.key] ? BLUE : '#F4F4F4'}
+                />
+              </View>
+            ))}
+            {Object.keys(errors).length > 0 && (
+              <Text style={styles.sheetErrorText}>
+                Please fix the highlighted prices before saving.
+              </Text>
+            )}
+
+            <TouchableOpacity style={styles.saveTouch} activeOpacity={0.9} onPress={handleSave}>
+              <LinearGradient colors={GRADIENT_VIBRANT} style={styles.saveButton}>
+                <MaterialCommunityIcons name="content-save-outline" size={18} color={WHITE} />
+                <Text style={styles.saveText}>Save Pricing</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
+
 export default function PaymentScreen({ navigation }: Props) {
-  const [smallLoadEnabled, setSmallLoadEnabled] = useState(true);
-  const [mediumLoadEnabled, setMediumLoadEnabled] = useState(true);
-  const [largeLoadEnabled, setLargeLoadEnabled] = useState(true);
-  const [bagEnabled, setBagEnabled] = useState(true);
-  const [deliveryEnabled, setDeliveryEnabled] = useState(true);
+  const { pricing, updatePricing } = useAdmin();
+  const [settingsVisible, setSettingsVisible] = useState(false);
+  const [savedVisible, setSavedVisible] = useState(false);
+  const [fontsLoaded] = useFonts({
+    Poppins_400Regular,
+    Poppins_500Medium,
+    Poppins_600SemiBold,
+    Poppins_700Bold,
+  });
+
+  if (!fontsLoaded) return null;
+
+  const togglePrice = (key: PricingKey) => {
+    updatePricing({
+      [key]: {
+        price: pricing[key].price,
+        enabled: !pricing[key].enabled,
+      },
+    } as Partial<Pricing>);
+  };
+
+  const handleSavePricing = (next: Pricing) => {
+    updatePricing(next);
+    setSettingsVisible(false);
+    setSavedVisible(true);
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.container}>
+      <LinearGradient colors={GRADIENT_VIBRANT} style={styles.headerBanner}>
+        <View style={styles.shine} />
         <View style={styles.header}>
           <TouchableOpacity
-            style={styles.backButton}
+            style={styles.headerIcon}
             onPress={() => navigation.goBack()}
           >
-            <Text style={styles.backText}>‹</Text>
+            <MaterialCommunityIcons name="arrow-left" size={22} color={WHITE} />
           </TouchableOpacity>
-
-          <Text style={styles.title}>Services & Pricing</Text>
-
+          <Text style={styles.headerTitle}>Services &amp; Pricing</Text>
           <TouchableOpacity
-            style={styles.settingsButton}
-            onPress={() =>
-              Alert.alert(
-                'Pricing settings',
-                'Advanced pricing settings will be connected here.'
-              )
-            }
+            style={styles.headerIcon}
+            onPress={() => setSettingsVisible(true)}
           >
-            <Text style={styles.settingsIcon}>⚙</Text>
+            <MaterialCommunityIcons name="cog-outline" size={20} color={WHITE} />
           </TouchableOpacity>
         </View>
+      </LinearGradient>
 
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.sectionHeadingRow}>
-          <Text style={styles.sectionHeading}>PRICE PER KG</Text>
-          <Text style={styles.sectionDescription}>
-            Charge based on the total weight of the laundry
-          </Text>
+          <Text style={styles.sectionHeading}>Price per kg</Text>
         </View>
 
         <ServiceItem
           title="0–5 kg"
           subtitle="Price for laundry up to 5kg"
-          price="R35 / kg"
-          enabled={smallLoadEnabled}
-          onToggle={() => setSmallLoadEnabled(!smallLoadEnabled)}
+          price={`R${pricing.smallLoad.price} / kg`}
+          enabled={pricing.smallLoad.enabled}
+          icon="scale-balance"
+          tint={BLUE_TINT}
+          color={BLUE}
+          onToggle={() => togglePrice('smallLoad')}
         />
 
         <ServiceItem
           title="5kg–10 kg"
           subtitle="Price for laundry between 5kg–10kg"
-          price="R85 / kg"
-          enabled={mediumLoadEnabled}
-          onToggle={() => setMediumLoadEnabled(!mediumLoadEnabled)}
+          price={`R${pricing.mediumLoad.price} / kg`}
+          enabled={pricing.mediumLoad.enabled}
+          icon="weight-kilogram"
+          tint="#EFEBFF"
+          color={PURPLE}
+          onToggle={() => togglePrice('mediumLoad')}
         />
 
         <ServiceItem
           title="10+ kg"
           subtitle="Price for laundry above 10kg"
-          price="R50 / kg"
-          enabled={largeLoadEnabled}
-          onToggle={() => setLargeLoadEnabled(!largeLoadEnabled)}
+          price={`R${pricing.largeLoad.price} / kg`}
+          enabled={pricing.largeLoad.enabled}
+          icon="scale"
+          tint="#D6F0F4"
+          color="#0E9AA7"
+          onToggle={() => togglePrice('largeLoad')}
         />
 
-        <Text style={styles.sectionHeading}>PRICE PER BAG</Text>
+        <View style={styles.sectionHeadingRow}>
+          <Text style={styles.sectionHeading}>Price per bag</Text>
+        </View>
 
         <ServiceItem
-          title="Per laundry Bag"
+          title="Per laundry bag"
           subtitle="Up to 10 kg per bag"
-          price="R100"
-          enabled={bagEnabled}
-          onToggle={() => setBagEnabled(!bagEnabled)}
+          price={`R${pricing.bag.price}`}
+          enabled={pricing.bag.enabled}
+          icon="shopping-outline"
+          tint="#DDF8E8"
+          color="#00A85A"
+          onToggle={() => togglePrice('bag')}
         />
 
-        <Text style={styles.sectionHeading}>PICKUP & DELIVERY FEE</Text>
+        <View style={styles.sectionHeadingRow}>
+          <Text style={styles.sectionHeading}>Pickup &amp; delivery fee</Text>
+        </View>
 
         <ServiceItem
-          title="Pickup & Drop off"
-          subtitle="For collection and Drop off"
-          price="R150"
-          enabled={deliveryEnabled}
-          onToggle={() => setDeliveryEnabled(!deliveryEnabled)}
+          title="Pickup &amp; Drop off"
+          subtitle="For collection and drop off"
+          price={`R${pricing.delivery.price}`}
+          enabled={pricing.delivery.enabled}
+          icon="truck-delivery-outline"
+          tint="#FFF0B8"
+          color="#E8960C"
+          onToggle={() => togglePrice('delivery')}
+        />
+
+        <View style={styles.sectionHeadingRow}>
+          <Text style={styles.sectionHeading}>Express</Text>
+        </View>
+
+        <ServiceItem
+          title="Same-day express"
+          subtitle="Rush processing with guaranteed delivery"
+          price={`R${pricing.express.price}`}
+          enabled={pricing.express.enabled}
+          icon="lightning-bolt-outline"
+          tint="#FFE8EF"
+          color="#EC5E9B"
+          onToggle={() => togglePrice('express')}
         />
       </ScrollView>
+
+      <PricingSettingsModal
+        visible={settingsVisible}
+        pricing={pricing}
+        onClose={() => setSettingsVisible(false)}
+        onSave={handleSavePricing}
+      />
+
+      <FancyAlert
+        visible={savedVisible}
+        icon="tag-check-outline"
+        iconColor="#0B7A50"
+        iconBackground="#DDF8E8"
+        title="Pricing updated"
+        message="Your services and pricing have been saved successfully."
+        onClose={() => setSavedVisible(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -145,114 +426,253 @@ export default function PaymentScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: WHITE,
   },
-
-  container: {
-    paddingHorizontal: 20,
-    paddingTop: 14,
-    paddingBottom: 30,
+  headerBanner: {
+    marginBottom: 14,
   },
-
+  shine: {
+    position: 'absolute',
+    top: -30,
+    left: -30,
+    width: 90,
+    height: 120,
+    borderRadius: 45,
+    backgroundColor: 'rgba(255, 255, 255, 0.14)',
+    transform: [{ rotate: '20deg' }],
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 16,
   },
-
-  backButton: {
-    width: 36,
-    height: 36,
+  headerIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
     justifyContent: 'center',
+    alignItems: 'center',
   },
-
-  backText: {
-    fontSize: 34,
-    color: '#12263A',
-    lineHeight: 34,
-  },
-
-  title: {
+  headerTitle: {
+    fontFamily: 'Poppins_600SemiBold',
     fontSize: 18,
-    fontWeight: '700',
-    color: '#12263A',
+    color: WHITE,
   },
-
-  settingsButton: {
-    width: 36,
-    height: 36,
-    justifyContent: 'center',
-    alignItems: 'center',
+  scroll: {
+    backgroundColor: '#F5F7FA',
   },
-
-  settingsIcon: {
-    fontSize: 17,
-    color: '#12263A',
+  container: {
+    paddingHorizontal: 20,
+    paddingBottom: 40,
   },
-
   sectionHeadingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
+    marginTop: 6,
+    marginBottom: 12,
   },
-
   sectionHeading: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#173D8F',
-    marginTop: 10,
-    marginBottom: 8,
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 15,
+    color: TEAL_HEADING,
   },
-
-  sectionDescription: {
-    fontSize: 9,
-    color: '#8A94A3',
-    marginLeft: 5,
-  },
-
   serviceCard: {
     minHeight: 72,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: WHITE,
     borderWidth: 1,
-    borderColor: '#E1E5EA',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 11,
+    borderColor: BORDER,
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     marginBottom: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    elevation: 1,
+    elevation: 2,
+    shadowColor: '#26384A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
   },
-
-  iconPlaceholder: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    backgroundColor: '#F5F7FA',
-    marginRight: 10,
+  iconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
-
   serviceDetails: {
     flex: 1,
   },
-
   serviceTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#12263A',
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 14,
+    color: TEXT_DARK,
   },
-
   serviceSubtitle: {
     marginTop: 3,
-    fontSize: 9,
-    color: '#87909C',
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 10,
+    color: TEXT_MUTED,
   },
-
+  serviceRight: {
+    alignItems: 'flex-end',
+  },
   priceText: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 13,
+    color: BLUE,
+    marginBottom: 2,
+  },
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(18, 38, 58, 0.55)',
+    justifyContent: 'flex-end',
+  },
+  backdropTouch: {
+    flex: 1,
+  },
+  sheet: {
+    backgroundColor: '#F5F7FA',
+    borderTopLeftRadius: 26,
+    borderTopRightRadius: 26,
+    maxHeight: '92%',
+    overflow: 'hidden',
+  },
+  sheetHeader: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 16,
+    overflow: 'hidden',
+  },
+  sheetHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  sheetHeaderIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sheetHeaderTitle: {
+    flex: 1,
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 17,
+    color: WHITE,
+    marginLeft: 12,
+  },
+  sheetCloseButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sheetScroll: {
+    flexGrow: 0,
+  },
+  sheetContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    paddingBottom: 28,
+  },
+  sheetNote: {
+    fontFamily: 'Poppins_400Regular',
     fontSize: 12,
-    fontWeight: '700',
-    color: '#173D8F',
+    lineHeight: 18,
+    color: TEXT_MUTED,
+    marginBottom: 14,
+  },
+  settingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: WHITE,
+    borderWidth: 1,
+    borderColor: BORDER,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 10,
+  },
+  settingBody: {
+    flex: 1,
     marginRight: 8,
+  },
+  settingLabel: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 13,
+    color: TEXT_DARK,
+  },
+  settingHint: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 10,
+    color: TEXT_MUTED,
+    marginTop: 1,
+  },
+  settingInputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F6F9',
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    height: 38,
+    marginRight: 8,
+  },
+  settingCurrency: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 13,
+    color: TEXT_MUTED,
+    marginRight: 2,
+  },
+  settingInput: {
+    minWidth: 44,
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 13,
+    color: TEXT_DARK,
+    padding: 0,
+    textAlign: 'center',
+  },
+  settingInputError: {
+    color: DANGER,
+  },
+  settingSuffix: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 9,
+    color: TEXT_MUTED,
+    marginLeft: 3,
+  },
+  sheetErrorText: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 11,
+    color: DANGER,
+    marginBottom: 10,
+  },
+  saveTouch: {
+    borderRadius: 16,
+    marginTop: 4,
+  },
+  saveButton: {
+    height: 52,
+    borderRadius: 16,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 3,
+    shadowColor: BLUE,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+  },
+  saveText: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 15,
+    color: WHITE,
+    marginLeft: 8,
   },
 });

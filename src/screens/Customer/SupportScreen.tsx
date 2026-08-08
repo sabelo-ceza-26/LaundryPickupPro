@@ -42,15 +42,21 @@ type FaqItem = {
   answer: string;
 };
 
-const TEAL = '#0F363F';
-const TEAL_MID = '#1E5660';
-const ICON_DARK = '#2B3642';
+const TEAL = '#0E9AA7';
+const TEAL_TINT = '#D6F0F4';
+const GREEN = '#00A85A';
+const GREEN_TINT = '#DDF8E8';
+const BLUE = '#2E6BFF';
+const BLUE_TINT = '#E4EEFF';
+const PURPLE = '#7857FF';
+const PURPLE_TINT = '#EFEBFF';
 const TEXT_DARK = '#1F2933';
 const TEXT_MUTED = '#7A869A';
 const BORDER = '#E8ECF1';
 const WHITE = '#FFFFFF';
+const SECTION = '#0E7A86';
 
-const GRADIENT_TEAL = [TEAL_MID, TEAL] as const;
+const GRADIENT_VIBRANT = ['#2E6BFF', '#7857FF'] as const;
 
 const SUPPORT_PHONE = '+27108765432';
 const SUPPORT_WHATSAPP = '27829876543';
@@ -102,16 +108,16 @@ export default function SupportScreen({ navigation }: Props) {
       label: 'Call us',
       hint: SUPPORT_PHONE,
       icon: 'phone-outline',
-      tint: '#E2ECEB',
-      color: TEAL,
+      tint: GREEN_TINT,
+      color: GREEN,
       onPress: () => Linking.openURL(`tel:${SUPPORT_PHONE}`).catch(() => undefined),
     },
     {
       label: 'WhatsApp',
       hint: 'Chat with our team',
       icon: 'whatsapp',
-      tint: '#DDF8E8',
-      color: '#00A85A',
+      tint: TEAL_TINT,
+      color: TEAL,
       onPress: () =>
         Linking.openURL(
           `https://wa.me/${SUPPORT_WHATSAPP}?text=${encodeURIComponent('Hi, I need help with my laundry order.')}`
@@ -121,24 +127,36 @@ export default function SupportScreen({ navigation }: Props) {
       label: 'Email us',
       hint: SUPPORT_EMAIL,
       icon: 'email-outline',
-      tint: '#E4EEFF',
-      color: '#2E6BFF',
+      tint: BLUE_TINT,
+      color: BLUE,
       onPress: () =>
         Linking.openURL(`mailto:${SUPPORT_EMAIL}`).catch(() => undefined),
     },
   ];
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!subject.trim() || !message.trim()) {
       Alert.alert('Missing details', 'Please add a subject and a message.');
       return;
     }
-    Alert.alert(
-      'Message sent',
-      'Thanks! Our support team will get back to you within 24 hours.'
-    );
-    setSubject('');
-    setMessage('');
+    const body = encodeURIComponent(`${subject.trim()}\n\n${message.trim()}`);
+    const url = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(
+      'App problem report'
+    )}&body=${body}`;
+    try {
+      await Linking.openURL(url);
+      Alert.alert(
+        'Message sent',
+        'Thanks! Our support team will get back to you within 24 hours.'
+      );
+      setSubject('');
+      setMessage('');
+    } catch {
+      Alert.alert(
+        'Could not open email',
+        `Please email us directly at ${SUPPORT_EMAIL}.`
+      );
+    }
   };
 
   return (
@@ -182,11 +200,14 @@ export default function SupportScreen({ navigation }: Props) {
                 onPress={() => setOpenFaq(isOpen ? null : index)}
               >
                 <View style={styles.faqQuestionRow}>
+                  <View style={styles.faqIcon}>
+                    <MaterialCommunityIcons name="help-circle-outline" size={18} color={PURPLE} />
+                  </View>
                   <Text style={styles.faqQuestion}>{faq.question}</Text>
                   <MaterialCommunityIcons
                     name={isOpen ? 'chevron-up' : 'chevron-down'}
                     size={20}
-                    color={TEXT_MUTED}
+                    color={TEAL}
                   />
                 </View>
                 {isOpen && <Text style={styles.faqAnswer}>{faq.answer}</Text>}
@@ -233,7 +254,8 @@ export default function SupportScreen({ navigation }: Props) {
             activeOpacity={0.9}
             onPress={handleSubmit}
           >
-            <LinearGradient colors={GRADIENT_TEAL} style={styles.submitButton}>
+            <LinearGradient colors={GRADIENT_VIBRANT} style={styles.submitButton}>
+              <View style={styles.shine} />
               <Text style={styles.submitText}>Send Message</Text>
               <MaterialCommunityIcons name="send" size={18} color={WHITE} />
             </LinearGradient>
@@ -270,11 +292,16 @@ const styles = StyleSheet.create({
     borderColor: BORDER,
     paddingVertical: 16,
     alignItems: 'center',
+    shadowColor: '#1F2933',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 2,
   },
   channelIcon: {
     width: 46,
     height: 46,
-    borderRadius: 15,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -294,7 +321,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 15,
-    color: TEXT_DARK,
+    color: SECTION,
     marginBottom: 10,
   },
   faqCard: {
@@ -304,6 +331,11 @@ const styles = StyleSheet.create({
     borderColor: BORDER,
     marginBottom: 22,
     overflow: 'hidden',
+    shadowColor: '#1F2933',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 2,
   },
   faqRow: {
     paddingHorizontal: 16,
@@ -318,11 +350,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  faqIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    backgroundColor: PURPLE_TINT,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
   faqQuestion: {
     flex: 1,
     fontFamily: 'Poppins_500Medium',
     fontSize: 14,
-    color: TEXT_DARK,
+    color: SECTION,
     marginRight: 10,
   },
   faqAnswer: {
@@ -338,6 +379,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: BORDER,
     padding: 16,
+    shadowColor: '#1F2933',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 2,
   },
   inputLabel: {
     fontFamily: 'Poppins_500Medium',
@@ -384,8 +430,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     height: 54,
     borderRadius: 16,
+    overflow: 'hidden',
     elevation: 3,
-    shadowColor: TEAL,
+    shadowColor: BLUE,
     shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 0.22,
     shadowRadius: 10,
@@ -395,5 +442,15 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: WHITE,
     marginRight: 8,
+  },
+  shine: {
+    position: 'absolute',
+    top: -30,
+    left: -30,
+    width: 90,
+    height: 120,
+    borderRadius: 45,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    transform: [{ rotate: '20deg' }],
   },
 });
