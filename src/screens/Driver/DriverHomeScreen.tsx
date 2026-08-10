@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import {
+    Modal,
+    Pressable,
     ScrollView,
     StyleSheet,
     Text,
@@ -7,60 +9,36 @@ import {
     TextInput,
     View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+    SafeAreaView,
+    useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import type { DriverStackParamList } from '../../navigation/DriverNavigator';
 import { useAuth } from '../../hooks/useAuth';
+import { useDriverOrders } from '../../context/DriverOrdersContext';
 
 type Props = NativeStackScreenProps<
     DriverStackParamList,
     'Home'
 >;
 
-const orders = [
-    {
-        id: 1,
-        orderNumber: 'ORD-1001',
-        type: 'Pickup',
-        customer: 'Matthew Yako',
-        phone: '083 987 5462',
-        address: '173 Sir Lowry, Woodstock',
-        laundromat: 'Clean & Fresh Laundry',
-        laundromatAddress: '17 Hanover Street, District Six',
-        time: '10:00 AM',
-        notes: 'Leave laundry bags on the front porch if not answered.',
-    },
-    {
-        id: 2,
-        orderNumber: 'ORD-1002',
-        type: 'Delivery',
-        customer: 'Andiswa Gumede',
-        phone: '082 123 4567',
-        address: '173 Sir Lowry, Woodstock',
-        laundromat: 'Sparkle Laundry',
-        laundromatAddress: '10 Long Street, Cape Town',
-        time: '11:00 AM',
-        notes: 'Call before arrival.',
-    },
-    {
-        id: 3,
-        orderNumber: 'ORD-1003',
-        type: 'Pickup',
-        customer: 'Sarah Jenkins',
-        phone: '084 555 7890',
-        address: '45 Albert Road, Woodstock',
-        laundromat: 'Fresh Wash Laundry',
-        laundromatAddress: '20 Main Road, Observatory',
-        time: '12:30 PM',
-        notes: 'Customer prefers contactless pickup.',
-    },
-];
-
 export default function DriverHomeScreen({ navigation }: Props) {
-    const { user } = useAuth();
+    const { user, signOut } = useAuth();
+    const { orders } = useDriverOrders();
+    const insets = useSafeAreaInsets();
     const [searchText, setSearchText] = useState('');
+    const [menuVisible, setMenuVisible] = useState(false);
+    const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+    const closeMenu = () => setMenuVisible(false);
+
+    const confirmLogout = () => {
+        setShowLogoutModal(false);
+        signOut();
+    };
 
     const filteredOrders = orders.filter((order) =>
         order.orderNumber.toLowerCase().includes(searchText.trim().toLowerCase()),
@@ -74,7 +52,9 @@ export default function DriverHomeScreen({ navigation }: Props) {
 
                 <View style={styles.header}>
 
-                    <TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={() => setMenuVisible((visible) => !visible)}
+                    >
                         <Ionicons
                             name="menu"
                             size={24}
@@ -152,7 +132,10 @@ export default function DriverHomeScreen({ navigation }: Props) {
 
                 {/* Route Button */}
 
-                <TouchableOpacity style={styles.routeButton}>
+                <TouchableOpacity
+                    style={styles.routeButton}
+                    onPress={() => navigation.navigate('Navigation')}
+                >
                     <Text style={styles.routeButtonText}>
                         Start Route
                     </Text>
@@ -235,6 +218,123 @@ export default function DriverHomeScreen({ navigation }: Props) {
                 ))}
 
             </ScrollView>
+
+            {/* Options Menu */}
+            <Modal
+                visible={menuVisible}
+                transparent
+                animationType="fade"
+                onRequestClose={closeMenu}
+            >
+                <Pressable
+                    style={styles.menuBackdrop}
+                    onPress={closeMenu}
+                >
+                    <View
+                        style={[
+                            styles.optionsMenu,
+                            { top: insets.top + 50, left: 20 },
+                        ]}
+                    >
+                        <TouchableOpacity
+                            style={styles.menuItem}
+                            onPress={() => {
+                                closeMenu();
+                                navigation.navigate('Notifications');
+                            }}
+                        >
+                            <Ionicons
+                                name="notifications-outline"
+                                size={18}
+                                color="#12263A"
+                            />
+                            <Text style={styles.menuItemText}>
+                                Notifications
+                            </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.menuItem}
+                            onPress={() => {
+                                closeMenu();
+                                navigation.navigate('Profile');
+                            }}
+                        >
+                            <Ionicons
+                                name="person-outline"
+                                size={18}
+                                color="#12263A"
+                            />
+                            <Text style={styles.menuItemText}>
+                                Profile
+                            </Text>
+                        </TouchableOpacity>
+
+                        <View style={styles.menuDivider} />
+
+                        <TouchableOpacity
+                            style={styles.menuItem}
+                            onPress={() => {
+                                closeMenu();
+                                setShowLogoutModal(true);
+                            }}
+                        >
+                            <Ionicons
+                                name="log-out-outline"
+                                size={18}
+                                color="#E11D48"
+                            />
+                            <Text style={[styles.menuItemText, styles.menuItemLogout]}>
+                                Sign Out
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                </Pressable>
+            </Modal>
+
+            {/* Logout Confirmation Modal */}
+            <Modal
+                visible={showLogoutModal}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setShowLogoutModal(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalCard}>
+                        <View style={styles.modalIcon}>
+                            <Ionicons
+                                name="log-out-outline"
+                                size={28}
+                                color="#E11D48"
+                            />
+                        </View>
+                        <Text style={styles.modalTitle}>
+                            Logout
+                        </Text>
+                        <Text style={styles.modalMessage}>
+                            Are you sure you want to log out?
+                        </Text>
+                        <View style={styles.modalActions}>
+                            <TouchableOpacity
+                                style={styles.modalCancelButton}
+                                onPress={() => setShowLogoutModal(false)}
+                            >
+                                <Text style={styles.modalCancelText}>
+                                    Cancel
+                                </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={styles.modalConfirmButton}
+                                onPress={confirmLogout}
+                            >
+                                <Text style={styles.modalConfirmText}>
+                                    Logout
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 }
@@ -397,6 +497,132 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontWeight: '700',
         fontSize: 12,
+    },
+
+    menuBackdrop: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.25)',
+    },
+
+    optionsMenu: {
+        position: 'absolute',
+        width: 220,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 14,
+        elevation: 6,
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 10,
+        paddingVertical: 6,
+    },
+
+    menuItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 13,
+    },
+
+    menuItemText: {
+        marginLeft: 12,
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#12263A',
+    },
+
+    menuItemLogout: {
+        color: '#E11D48',
+    },
+
+    menuDivider: {
+        height: StyleSheet.hairlineWidth,
+        backgroundColor: '#E8ECF1',
+    },
+
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.45)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 40,
+    },
+
+    modalCard: {
+        width: '100%',
+        maxWidth: 340,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 18,
+        padding: 24,
+        alignItems: 'center',
+        elevation: 8,
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 12,
+    },
+
+    modalIcon: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        backgroundColor: '#FDECEC',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 14,
+    },
+
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#12263A',
+    },
+
+    modalMessage: {
+        marginTop: 6,
+        fontSize: 14,
+        color: '#7A8492',
+        textAlign: 'center',
+        lineHeight: 20,
+    },
+
+    modalActions: {
+        flexDirection: 'row',
+        width: '100%',
+        marginTop: 22,
+    },
+
+    modalCancelButton: {
+        flex: 1,
+        height: 48,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#D9D9D9',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 10,
+    },
+
+    modalCancelText: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#12263A',
+    },
+
+    modalConfirmButton: {
+        flex: 1,
+        height: 48,
+        borderRadius: 12,
+        backgroundColor: '#E11D48',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginLeft: 10,
+    },
+
+    modalConfirmText: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#FFFFFF',
     },
 
 });
