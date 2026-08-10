@@ -1,5 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
+    Alert,
+    Linking,
+    Modal,
     ScrollView,
     StyleSheet,
     Text,
@@ -11,6 +14,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import type { DriverStackParamList } from '../../navigation/DriverNavigator';
+import { useDriverOrders } from '../../context/DriverOrdersContext';
 
 type Props = NativeStackScreenProps<
     DriverStackParamList,
@@ -23,6 +27,29 @@ export default function DeliveryDetailsScreen({
 }: Props) {
 
     const { order } = route.params;
+    const { updateOrderStatus } = useDriverOrders();
+
+    const [showConfirm, setShowConfirm] = useState(false);
+    const [showSuccess, setShowSuccess] = useState(false);
+
+    const openMaps = () => {
+        Linking.openURL(
+            `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
+                order.address,
+            )}`,
+        ).catch(() =>
+            Alert.alert(
+                'Cannot open maps',
+                'No map application is available on this device.',
+            ),
+        );
+    };
+
+    const confirmDelivery = () => {
+        setShowConfirm(false);
+        updateOrderStatus(order.orderNumber, 'Completed');
+        setShowSuccess(true);
+    };
 
     return (
         <SafeAreaView style={styles.safeArea}>
@@ -136,19 +163,112 @@ export default function DeliveryDetailsScreen({
                 </View>
 
                 {/* Buttons */}
-                <TouchableOpacity style={styles.deliverButton}>
+                <TouchableOpacity
+                    style={styles.deliverButton}
+                    onPress={() => setShowConfirm(true)}
+                >
                     <Text style={styles.deliverButtonText}>
                         Mark as Delivered
                     </Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.mapButton}>
+                <TouchableOpacity
+                    style={styles.mapButton}
+                    onPress={openMaps}
+                >
                     <Text style={styles.mapButtonText}>
                         Open Maps
                     </Text>
                 </TouchableOpacity>
 
             </ScrollView>
+
+            {/* Confirmation Modal */}
+            <Modal
+                visible={showConfirm}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setShowConfirm(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalCard}>
+                        <View style={styles.modalIcon}>
+                            <MaterialCommunityIcons
+                                name="package-variant-closed-check"
+                                size={30}
+                                color="#16A34A"
+                            />
+                        </View>
+                        <Text style={styles.modalTitle}>
+                            Mark as delivered?
+                        </Text>
+                        <Text style={styles.modalMessage}>
+                            Confirm that {order.orderNumber} has been
+                            delivered to {order.customer}.
+                        </Text>
+                        <View style={styles.modalActions}>
+                            <TouchableOpacity
+                                style={styles.modalCancelButton}
+                                onPress={() => setShowConfirm(false)}
+                            >
+                                <Text style={styles.modalCancelText}>
+                                    Cancel
+                                </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={styles.modalConfirmButton}
+                                onPress={confirmDelivery}
+                            >
+                                <Text style={styles.modalConfirmText}>
+                                    Confirm
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Success Modal */}
+            <Modal
+                visible={showSuccess}
+                transparent
+                animationType="fade"
+                onRequestClose={() => {
+                    setShowSuccess(false);
+                    navigation.goBack();
+                }}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalCard}>
+                        <View style={[styles.modalIcon, styles.successIcon]}>
+                            <Ionicons
+                                name="checkmark"
+                                size={32}
+                                color="#FFFFFF"
+                            />
+                        </View>
+                        <Text style={styles.modalTitle}>
+                            Order Delivered
+                        </Text>
+                        <Text style={styles.modalMessage}>
+                            {order.orderNumber} has been marked as
+                            delivered successfully.
+                        </Text>
+                        <TouchableOpacity
+                            style={styles.successButton}
+                            onPress={() => {
+                                setShowSuccess(false);
+                                navigation.goBack();
+                            }}
+                        >
+                            <Text style={styles.successButtonText}>
+                                Done
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
         </SafeAreaView>
     );
 }
@@ -283,6 +403,111 @@ const styles = StyleSheet.create({
         color: '#173D8F',
         fontSize: 16,
         fontWeight: '700',
+    },
+
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(18, 38, 58, 0.45)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 40,
+    },
+
+    modalCard: {
+        width: '100%',
+        maxWidth: 340,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 18,
+        padding: 24,
+        alignItems: 'center',
+        elevation: 8,
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 12,
+    },
+
+    modalIcon: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        backgroundColor: '#E9F9EF',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 14,
+    },
+
+    successIcon: {
+        backgroundColor: '#16A34A',
+    },
+
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#12263A',
+    },
+
+    modalMessage: {
+        marginTop: 6,
+        fontSize: 14,
+        color: '#7A8492',
+        textAlign: 'center',
+        lineHeight: 20,
+    },
+
+    modalActions: {
+        flexDirection: 'row',
+        width: '100%',
+        marginTop: 22,
+    },
+
+    modalCancelButton: {
+        flex: 1,
+        height: 48,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#D9D9D9',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 10,
+    },
+
+    modalCancelText: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#12263A',
+    },
+
+    modalConfirmButton: {
+        flex: 1,
+        height: 48,
+        borderRadius: 12,
+        backgroundColor: '#16A34A',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginLeft: 10,
+    },
+
+    modalConfirmText: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#FFFFFF',
+    },
+
+    successButton: {
+        alignSelf: 'stretch',
+        height: 48,
+        borderRadius: 12,
+        backgroundColor: '#16A34A',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: 20,
+    },
+
+    successButtonText: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#FFFFFF',
     },
 
 });
