@@ -11,70 +11,18 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import type { DriverStackParamList } from '../../navigation/DriverNavigator';
+import { useDriverOrders } from '../../context/DriverOrdersContext';
 
 type Props = NativeStackScreenProps<
     DriverStackParamList,
     'Orders'
 >;
 
-const orders = [
-    {
-        id: 1,
-        orderNumber: 'ORD-1001',
-        type: 'Pickup',
-        customer: 'Matthew Yako',
-        address: '173 Sir Lowry, Woodstock',
-        time: '10:30 AM',
-        status: 'Assigned',
-        phone: '083 987 5462',
-        laundromat: 'Clean & Fresh Laundry',
-        laundromatAddress: '17 Hanover Street, District Six',
-        notes: 'Leave laundry bags on the porch.',
-    },
-    {
-        id: 2,
-        orderNumber: 'ORD-1002',
-        type: 'Pickup',
-        customer: 'Nosipho Dlala',
-        address: '01 Adderley Rd, Maitland',
-        time: '12:00 PM',
-        status: 'Pending',
-        phone: '081 123 4567',
-        laundromat: 'Fresh Laundry',
-        laundromatAddress: '10 Main Road',
-        notes: 'Call before arrival.',
-    },
-    {
-        id: 3,
-        orderNumber: 'ORD-1003',
-        type: 'Delivery',
-        customer: 'Andiswa Gumede',
-        address: '173 Sir Lowry, Woodstock',
-        time: '11:00 AM',
-        status: 'Assigned',
-        phone: '082 345 6789',
-        laundromat: 'Sparkle Laundry',
-        laundromatAddress: '22 Long Street',
-        notes: 'Leave with security.',
-    },
-    {
-        id: 4,
-        orderNumber: 'ORD-1004',
-        type: 'Delivery',
-        customer: 'Jessica Moose',
-        address: '10 St Marks, Observatory',
-        time: '15:30 PM',
-        status: 'Pending',
-        phone: '079 123 1111',
-        laundromat: 'Sparkle Laundry',
-        laundromatAddress: '22 Long Street',
-        notes: 'Customer not home before 3pm.',
-    },
-];
-
 export default function OrdersScreen({
     navigation,
 }: Props) {
+
+    const { orders } = useDriverOrders();
 
     const [selectedTab, setSelectedTab] =
         useState('All');
@@ -212,9 +160,12 @@ export default function OrdersScreen({
                                     styles.status,
                                     {
                                         color:
-                                            order.status === 'Assigned'
+                                            order.status === 'Completed'
                                                 ? '#16A34A'
-                                                : '#F59E0B',
+                                                : order.status ===
+                                                  'Assigned'
+                                                  ? '#173D8F'
+                                                  : '#F59E0B',
                                     },
                                 ]}
                             >
