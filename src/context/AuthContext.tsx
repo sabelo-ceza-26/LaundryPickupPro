@@ -17,6 +17,7 @@ type AuthContextValue = {
   signIn: (role: Role, user: User) => void;
   signOut: () => void;
   updateUser: (patch: Partial<Omit<User, 'id' | 'role'>>) => void;
+  changePassword: (currentPassword: string, newPassword: string) => void;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -26,6 +27,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [role, setRole] = useState<Role | null>(null);
   const [hasSignedInBefore, setHasSignedInBefore] = useState(false);
   const [lastRole, setLastRole] = useState<Role | null>(null);
+  const [password, setPassword] = useState('');
 
   const signIn = useCallback((nextRole: Role, nextUser: User) => {
     setRole(nextRole);
@@ -43,6 +45,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser((current) => (current ? { ...current, ...patch } : current));
   }, []);
 
+  const changePassword = useCallback(
+    (currentPassword: string, newPassword: string) => {
+      if (password && currentPassword !== password) {
+        throw new Error('Your current password is incorrect.');
+      }
+      setPassword(newPassword);
+    },
+    [password]
+  );
+
   const value = useMemo<AuthContextValue>(
     () => ({
       isAuthenticated: user !== null,
@@ -53,8 +65,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signIn,
       signOut,
       updateUser,
+      changePassword,
     }),
-    [user, role, hasSignedInBefore, lastRole, signIn, signOut, updateUser]
+    [user, role, hasSignedInBefore, lastRole, signIn, signOut, updateUser, changePassword]
   );
 
   return (
