@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-    Alert,
     Modal,
     ScrollView,
     StyleSheet,
@@ -10,14 +9,22 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { useAuth } from '../../hooks/useAuth';
 import { ROLE_LABELS } from '../../types';
+import type { DriverStackParamList } from '../../navigation/DriverNavigator';
+
+type Props = NativeStackScreenProps<
+    DriverStackParamList,
+    'Profile'
+>;
 
 type SettingsRow = {
     label: string;
     icon: keyof typeof Ionicons.glyphMap;
     color: string;
+    onPress: (navigation: Props['navigation']) => void;
 };
 
 const settingsRows: SettingsRow[] = [
@@ -25,25 +32,30 @@ const settingsRows: SettingsRow[] = [
         label: 'Account Settings',
         icon: 'person-outline',
         color: '#173D8F',
+        onPress: (navigation) => navigation.navigate('AccountSettings'),
     },
     {
         label: 'Notifications',
         icon: 'notifications-outline',
         color: '#F59E0B',
+        onPress: (navigation) =>
+            navigation.navigate('NotificationSettings'),
     },
     {
         label: 'Privacy & Security',
         icon: 'shield-outline',
         color: '#16A34A',
+        onPress: (navigation) => navigation.navigate('PrivacySecurity'),
     },
     {
         label: 'Help & Support',
         icon: 'help-circle-outline',
         color: '#7A8492',
+        onPress: (navigation) => navigation.navigate('HelpSupport'),
     },
 ];
 
-export default function ProfileScreen() {
+export default function ProfileScreen({ navigation }: Props) {
     const { user, signOut } = useAuth();
     const [showLogoutModal, setShowLogoutModal] = useState(false);
 
@@ -53,13 +65,6 @@ export default function ProfileScreen() {
     const roleLabel = user?.role
         ? ROLE_LABELS[user.role]
         : 'Driver';
-
-    const showComingSoon = (label: string) => {
-        Alert.alert(
-            'Coming Soon',
-            `${label} will be available soon.`,
-        );
-    };
 
     const confirmLogout = () => {
         setShowLogoutModal(false);
@@ -119,7 +124,7 @@ export default function ProfileScreen() {
                         <TouchableOpacity
                             key={row.label}
                             style={styles.settingsRow}
-                            onPress={() => showComingSoon(row.label)}
+                            onPress={() => row.onPress(navigation)}
                         >
                             <View
                                 style={[

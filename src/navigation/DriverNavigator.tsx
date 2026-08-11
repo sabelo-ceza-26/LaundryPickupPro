@@ -12,6 +12,13 @@ import DeliveryDetailsScreen from '../screens/Driver/DeliveryDetailsScreen';
 import ChatScreen from '../screens/Driver/ChatScreen';
 import ProfileScreen from '../screens/Driver/ProfileScreen';
 import NotificationScreen from '../screens/Driver/NotificationScreen';
+import AccountSettingsScreen from '../screens/Driver/AccountSettingsScreen';
+import NotificationSettingsScreen from '../screens/Driver/NotificationSettingsScreen';
+import PrivacySecurityScreen from '../screens/Driver/PrivacySecurityScreen';
+import HelpSupportScreen from '../screens/Driver/HelpSupportScreen';
+import ChangePasswordScreen from '../screens/Driver/ChangePasswordScreen';
+import NavigationScreen from '../screens/Driver/NavigationScreen';
+import { DriverOrdersProvider } from '../context/DriverOrdersContext';
 
 export type Order = {
   id: number;
@@ -43,6 +50,13 @@ export type DriverStackParamList = {
   Profile: undefined;
 
   Notifications: undefined;
+
+  AccountSettings: undefined;
+  NotificationSettings: undefined;
+  PrivacySecurity: undefined;
+  HelpSupport: undefined;
+  ChangePassword: undefined;
+  Navigation: undefined;
 
   OrderDetails: {
     order: Order;
@@ -118,29 +132,55 @@ function DriverTabs() {
 
 export default function DriverNavigator() {
   return (
-    <Stack.Navigator
-      initialRouteName="DriverTabs"
-      screenOptions={{
-        headerShown: false,
-      }}
-    >
-      <Stack.Screen
-        name="DriverTabs"
-        component={DriverTabs}
-      />
-      <Stack.Screen
-        name="Notifications"
-        component={NotificationScreen}
-      />
-      <Stack.Screen
-        name="OrderDetails"
-        component={PickupDetailsScreen}
-      />
-      <Stack.Screen
-        name="DeliveryDetails"
-        component={DeliveryDetailsScreen}
-      />
-    </Stack.Navigator>
+    <DriverOrdersProvider>
+      <Stack.Navigator
+        initialRouteName="DriverTabs"
+        screenOptions={{
+          headerShown: false,
+        }}
+      >
+        <Stack.Screen
+          name="DriverTabs"
+          component={DriverTabs}
+        />
+        <Stack.Screen
+          name="Notifications"
+          component={NotificationScreen}
+        />
+        <Stack.Screen
+          name="AccountSettings"
+          component={AccountSettingsScreen}
+        />
+        <Stack.Screen
+          name="NotificationSettings"
+          component={NotificationSettingsScreen}
+        />
+        <Stack.Screen
+          name="PrivacySecurity"
+          component={PrivacySecurityScreen}
+        />
+        <Stack.Screen
+          name="HelpSupport"
+          component={HelpSupportScreen}
+        />
+        <Stack.Screen
+          name="ChangePassword"
+          component={ChangePasswordScreen}
+        />
+        <Stack.Screen
+          name="Navigation"
+          component={NavigationScreen}
+        />
+        <Stack.Screen
+          name="OrderDetails"
+          component={PickupDetailsScreen}
+        />
+        <Stack.Screen
+          name="DeliveryDetails"
+          component={DeliveryDetailsScreen}
+        />
+      </Stack.Navigator>
+    </DriverOrdersProvider>
   );
 }
 
