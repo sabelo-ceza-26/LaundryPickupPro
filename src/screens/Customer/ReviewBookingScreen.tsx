@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -28,6 +29,7 @@ import {
   formatMoney,
   formatTimeWindow,
 } from '../../utils/format';
+import { DELIVERY_FEE, RATE_PER_KM } from '../../services/pricing';
 
 type Props = NativeStackScreenProps<BookingStackParamList, 'Step2'>;
 
@@ -75,6 +77,8 @@ function DetailRow({ icon, label, value, accent, last }: DetailRowProps) {
     </View>
   );
 }
+
+const isWeb = Platform.OS === 'web';
 
 export default function ReviewBookingScreen({ navigation }: Props) {
   const { booking } = useBooking();
@@ -135,6 +139,14 @@ export default function ReviewBookingScreen({ navigation }: Props) {
             value={booking.deliveryAddress}
             accent={ACCENTS.purple}
           />
+          {booking.assignedLaundromat && (
+            <DetailRow
+              icon="washing-machine"
+              label="Laundromat"
+              value={`${booking.assignedLaundromat.name} — ${booking.assignedLaundromat.address}`}
+              accent={ACCENTS.green}
+            />
+          )}
           <DetailRow
             icon="calendar-outline"
             label="Pickup Date & Time"
@@ -155,13 +167,34 @@ export default function ReviewBookingScreen({ navigation }: Props) {
             <MaterialCommunityIcons name="cash-multiple" size={24} color="#7857FF" />
           </View>
           <View style={styles.totalBody}>
-            <Text style={styles.totalLabel}>Estimated Total</Text>
+            <Text style={styles.totalLabel}>Price Breakdown</Text>
             <Text style={styles.totalHint}>
-              Final amount confirmed on payment
+              Pickup & delivery service
             </Text>
           </View>
-          <Text style={styles.totalValue}>{formatMoney(booking.total)}</Text>
         </LinearGradient>
+
+        <View style={styles.breakdownCard}>
+          <View style={styles.breakdownRow}>
+            <Text style={styles.breakdownLabel}>Bags</Text>
+            <Text style={styles.breakdownValue}>{booking.bagCount} {booking.bagCount === 1 ? 'bag' : 'bags'}</Text>
+          </View>
+          <View style={styles.breakdownRow}>
+            <Text style={styles.breakdownLabel}>Delivery fee</Text>
+            <Text style={styles.breakdownValue}>{formatMoney(DELIVERY_FEE)}</Text>
+          </View>
+          <View style={styles.breakdownRow}>
+            <Text style={styles.breakdownLabel}>
+              Distance ({booking.distanceKm > 0 ? booking.distanceKm.toFixed(1) : '0'} km × {formatMoney(RATE_PER_KM)}/km)
+            </Text>
+            <Text style={styles.breakdownValue}>{formatMoney(booking.distanceFee)}</Text>
+          </View>
+          <View style={styles.breakdownDivider} />
+          <View style={styles.breakdownRow}>
+            <Text style={styles.breakdownTotalLabel}>Total</Text>
+            <Text style={styles.breakdownTotalValue}>{formatMoney(booking.total)}</Text>
+          </View>
+        </View>
 
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Special Notes</Text>
@@ -236,9 +269,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#F7F9FB',
   },
   container: {
-    paddingHorizontal: 20,
+    paddingHorizontal: isWeb ? 32 : 20,
     paddingTop: 8,
     paddingBottom: 110,
+    ...(isWeb ? { maxWidth: 600, alignSelf: 'center', width: '100%' } : {}),
   },
   notice: {
     flexDirection: 'row',
@@ -375,6 +409,52 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_700Bold',
     fontSize: 24,
     color: '#FFFFFF',
+  },
+  breakdownCard: {
+    backgroundColor: colors.white,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: BORDER,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 18,
+    elevation: 1,
+    shadowColor: '#26384A',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+  },
+  breakdownRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 6,
+  },
+  breakdownLabel: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 13,
+    color: TEXT_MUTED,
+    flex: 1,
+  },
+  breakdownValue: {
+    fontFamily: 'Poppins_500Medium',
+    fontSize: 13,
+    color: TEXT_DARK,
+  },
+  breakdownDivider: {
+    height: 1,
+    backgroundColor: BORDER,
+    marginVertical: 8,
+  },
+  breakdownTotalLabel: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 15,
+    color: TEXT_DARK,
+  },
+  breakdownTotalValue: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 20,
+    color: TEAL,
   },
   notesText: {
     fontFamily: 'Poppins_400Regular',
