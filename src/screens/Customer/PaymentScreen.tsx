@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -28,6 +29,7 @@ import type { Booking } from '../../context/BookingContext';
 import type { BookingStackParamList } from '../../navigation/BookingNavigator';
 import { colors } from '../../theme/colors';
 import { formatMoney } from '../../utils/format';
+import { DELIVERY_FEE, RATE_PER_KM } from '../../services/pricing';
 
 type Props = NativeStackScreenProps<BookingStackParamList, 'Step3'>;
 
@@ -78,6 +80,8 @@ const formatExpiry = (text: string) => {
   if (digits.length <= 2) return digits;
   return `${digits.slice(0, 2)}/${digits.slice(2)}`;
 };
+
+const isWeb = Platform.OS === 'web';
 
 export default function PaymentScreen({ navigation }: Props) {
   const { booking, updateBooking } = useBooking();
@@ -152,7 +156,7 @@ export default function PaymentScreen({ navigation }: Props) {
             <MaterialCommunityIcons name="basket-outline" size={22} color="#7857FF" />
           </View>
           <View style={styles.summaryBody}>
-            <Text style={styles.summaryLabel}>Laundry Pickup Booking</Text>
+            <Text style={styles.summaryLabel}>Pickup & Delivery</Text>
             <Text style={styles.summaryHint}>
               {booking.pickupAddress}
             </Text>
@@ -367,6 +371,16 @@ export default function PaymentScreen({ navigation }: Props) {
           <LinearGradient colors={GRADIENT_NEXT} style={styles.payButton}>
             {paying ? (
               <ActivityIndicator color={colors.white} />
+            ) : method === 'cash' ? (
+              <>
+                <MaterialCommunityIcons
+                  name="calendar-check-outline"
+                  size={18}
+                  color={colors.white}
+                  style={styles.payButtonIcon}
+                />
+                <Text style={styles.payButtonText}>Book</Text>
+              </>
             ) : (
               <>
                 <MaterialCommunityIcons
@@ -432,9 +446,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#F7F9FB',
   },
   container: {
-    paddingHorizontal: 20,
+    paddingHorizontal: isWeb ? 32 : 20,
     paddingTop: 8,
     paddingBottom: 110,
+    ...(isWeb ? { maxWidth: 600, alignSelf: 'center', width: '100%' } : {}),
   },
   summaryCard: {
     flexDirection: 'row',
