@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -17,7 +18,10 @@ import type {
 import {
   getOrderSubtotal,
   getOrderTotal,
+  useAdmin,
 } from '../context/AdminContext';
+import { useDriverOrders } from '../context/DriverOrdersContext';
+import type { Order } from '../navigation/DriverNavigator';
 import { formatMoney } from '../utils/format';
 
 type Icon = keyof typeof MaterialCommunityIcons.glyphMap;
@@ -36,6 +40,7 @@ type Props = {
   order: AdminOrder | null;
   onClose: () => void;
   onUpdateStatus: (status: AdminOrderStatus) => void;
+  onAssignDriver: (orderId: string, driverName: string, driverPhone: string) => void;
 };
 
 const BLUE = '#2E6BFF';
@@ -104,17 +109,24 @@ function DetailRow({
   );
 }
 
+const isWeb = Platform.OS === 'web';
+
 export default function AdminOrderDetailModal({
   visible,
   order,
   onClose,
   onUpdateStatus,
+  onAssignDriver,
 }: Props) {
+  const { drivers } = useAdmin();
+  const [selectedDriver, setSelectedDriver] = useState<string | null>(null);
+
   if (!order) return null;
 
   const meta = STATUS_META[order.status];
   const subtotal = getOrderSubtotal(order);
   const total = getOrderTotal(order);
+  const isUnassigned = !order.driver || order.driver.trim() === '';
 
   return (
     <Modal
@@ -318,21 +330,76 @@ export default function AdminOrderDetailModal({
 
             <View style={styles.card}>
               <Text style={styles.cardTitle}>Driver</Text>
-              <DetailRow
-                icon="account-tie-outline"
-                label="Driver"
-                value={order.driver}
-                color={BLUE}
-                tint={BLUE_TINT}
-              />
-              <DetailRow
-                icon="phone-outline"
-                label="Driver Phone"
-                value={order.driverPhone}
-                color={GREEN}
-                tint={GREEN_TINT}
-                last
-              />
+              {isUnassigned ? (
+                <>
+                  <View style={styles.unassignedBanner}>
+                    <MaterialCommunityIcons name="alert-circle-outline" size={16} color="#E19A00" />
+                    <Text style={styles.unassignedText}>No driver assigned yet</Text>
+                  </View>
+                  <Text style={styles.assignLabel}>Select a driver:</Text>
+                  <View style={styles.driverChips}>
+                    {drivers.map((d) => {
+                      const isSelected = selectedDriver === d.name;
+                      return (
+                        <TouchableOpacity
+                          key={d.id}
+                          style={[styles.driverChip, isSelected && styles.driverChipActive]}
+                          activeOpacity={0.85}
+                          onPress={() => setSelectedDriver(isSelected ? null : d.name)}
+                        >
+                          {isSelected ? (
+                            <LinearGradient colors={GRADIENT_VIBRANT} style={styles.driverChipGradient}>
+                              <MaterialCommunityIcons name="check" size={12} color={WHITE} />
+                              <Text style={styles.driverChipTextActive}>{d.name}</Text>
+                            </LinearGradient>
+                          ) : (
+                            <View style={styles.driverChipInner}>
+                              <MaterialCommunityIcons name="account-tie-outline" size={12} color={BLUE} />
+                              <Text style={styles.driverChipText}>{d.name}</Text>
+                            </View>
+                          )}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                  {selectedDriver && (
+                    <TouchableOpacity
+                      style={styles.assignButton}
+                      activeOpacity={0.85}
+                      onPress={() => {
+                        const driver = drivers.find((d) => d.name === selectedDriver);
+                        if (driver) {
+                          onAssignDriver(order.id, driver.name, driver.phone);
+                          setSelectedDriver(null);
+                        }
+                      }}
+                    >
+                      <LinearGradient colors={GRADIENT_VIBRANT} style={styles.assignButtonGradient}>
+                        <MaterialCommunityIcons name="account-check-outline" size={16} color={WHITE} />
+                        <Text style={styles.assignButtonText}>Assign {selectedDriver}</Text>
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  )}
+                </>
+              ) : (
+                <>
+                  <DetailRow
+                    icon="account-tie-outline"
+                    label="Driver"
+                    value={order.driver}
+                    color={BLUE}
+                    tint={BLUE_TINT}
+                  />
+                  <DetailRow
+                    icon="phone-outline"
+                    label="Driver Phone"
+                    value={order.driverPhone}
+                    color={GREEN}
+                    tint={GREEN_TINT}
+                    last
+                  />
+                </>
+              )}
             </View>
 
             <View style={styles.card}>
@@ -377,17 +444,23 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(18, 38, 58, 0.55)',
-    justifyContent: 'flex-end',
+    justifyContent: isWeb ? 'center' : 'flex-end',
+    alignItems: isWeb ? 'center' : undefined,
+    paddingHorizontal: isWeb ? 20 : 0,
   },
   backdropTouch: {
     flex: 1,
+    ...(isWeb ? { width: '100%' } : {}),
   },
   sheet: {
     backgroundColor: '#F5F7FA',
     borderTopLeftRadius: 26,
     borderTopRightRadius: 26,
-    maxHeight: '92%',
+    borderBottomLeftRadius: isWeb ? 26 : 0,
+    borderBottomRightRadius: isWeb ? 26 : 0,
+    maxHeight: isWeb ? '85%' : '92%',
     overflow: 'hidden',
+    ...(isWeb ? { width: '100%', maxWidth: 520 } : {}),
   },
   hero: {
     paddingHorizontal: 20,
@@ -658,6 +731,85 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     color: TEXT_DARK,
     paddingVertical: 6,
+  },
+  unassignedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF8E6',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 10,
+  },
+  unassignedText: {
+    fontFamily: 'Poppins_500Medium',
+    fontSize: 12,
+    color: '#E19A00',
+    marginLeft: 6,
+  },
+  assignLabel: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 12,
+    color: TEXT_DARK,
+    marginBottom: 8,
+  },
+  driverChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 10,
+  },
+  driverChip: {
+    flexDirection: 'row',
+    borderRadius: 12,
+    marginRight: 8,
+    marginBottom: 8,
+    overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: BORDER,
+    backgroundColor: WHITE,
+  },
+  driverChipActive: {
+    borderColor: 'transparent',
+  },
+  driverChipInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  driverChipGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  driverChipText: {
+    fontFamily: 'Poppins_500Medium',
+    fontSize: 11,
+    color: BLUE,
+    marginLeft: 4,
+  },
+  driverChipTextActive: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 11,
+    color: WHITE,
+    marginLeft: 4,
+  },
+  assignButton: {
+    borderRadius: 12,
+  },
+  assignButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 42,
+    borderRadius: 12,
+  },
+  assignButtonText: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 13,
+    color: WHITE,
+    marginLeft: 6,
   },
   doneButton: {
     borderRadius: 16,
