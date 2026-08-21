@@ -184,6 +184,10 @@ export default function SettingsScreen({ navigation }: Props) {
   const [deliveryPriceInput, setDeliveryPriceInput] = useState('');
   const [deliveryError, setDeliveryError] = useState('');
 
+  const [showDistanceModal, setShowDistanceModal] = useState(false);
+  const [distancePriceInput, setDistancePriceInput] = useState('');
+  const [distanceError, setDistanceError] = useState('');
+
   const [success, setSuccess] = useState<Success>({
     visible: false,
     icon: 'check-circle-outline',
@@ -354,6 +358,54 @@ export default function SettingsScreen({ navigation }: Props) {
     });
   };
 
+  const openDistanceEdit = () => {
+    setDistancePriceInput(String(pricing.distanceRate?.price ?? 5));
+    setDistanceError('');
+    setShowDistanceModal(true);
+  };
+
+  const saveDistancePrice = () => {
+    const price = Number(distancePriceInput);
+    if (!distancePriceInput.trim() || Number.isNaN(price) || price < 0) {
+      setDistanceError('Enter a valid amount');
+      return;
+    }
+    updatePricing({ distanceRate: { price, enabled: true } });
+    setShowDistanceModal(false);
+    setSuccess({
+      visible: true,
+      icon: 'map-marker-distance',
+      iconColor: '#0B7A50',
+      iconBackground: '#DDF8E8',
+      title: 'Distance rate updated',
+      message: `The distance rate is now ${formatMoney(price)} per km.`,
+    });
+  };
+
+  const addDistanceRate = () => {
+    updatePricing({ distanceRate: { price: 5, enabled: true } });
+    setSuccess({
+      visible: true,
+      icon: 'map-marker-plus',
+      iconColor: '#0B7A50',
+      iconBackground: '#DDF8E8',
+      title: 'Distance rate added',
+      message: `A distance rate of ${formatMoney(5)} per km has been added.`,
+    });
+  };
+
+  const removeDistanceRate = () => {
+    updatePricing({ distanceRate: null });
+    setSuccess({
+      visible: true,
+      icon: 'tag-remove-outline',
+      iconColor: '#B3261E',
+      iconBackground: '#FDE7E8',
+      title: 'Distance rate removed',
+      message: 'The distance rate is no longer charged on orders.',
+    });
+  };
+
   const accountRows: LinkRow[] = [
     {
       label: 'Personal information',
@@ -477,6 +529,62 @@ export default function SettingsScreen({ navigation }: Props) {
               thumbColor={pricing.delivery.enabled ? '#FFFFFF' : '#F5F7FA'}
             />
           </View>
+
+          {pricing.distanceRate ? (
+            <View style={styles.row}>
+              <View style={[styles.rowIcon, { backgroundColor: '#E4EEFF' }]}>
+                <MaterialCommunityIcons
+                  name="map-marker-distance"
+                  size={20}
+                  color="#2E6BFF"
+                />
+              </View>
+              <View style={styles.rowBody}>
+                <Text style={styles.rowLabel}>Distance rate</Text>
+                <Text style={styles.rowHint}>Per km charged on every order</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.priceChip}
+                activeOpacity={0.8}
+                onPress={openDistanceEdit}
+              >
+                <Text style={styles.priceChipText}>
+                  {formatMoney(pricing.distanceRate.price)}
+                </Text>
+                <MaterialCommunityIcons name="pencil-outline" size={13} color={TEAL} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.iconChip, styles.iconChipDanger]}
+                activeOpacity={0.8}
+                onPress={removeDistanceRate}
+              >
+                <MaterialCommunityIcons
+                  name="trash-can-outline"
+                  size={17}
+                  color={DANGER}
+                />
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={styles.row}
+              activeOpacity={0.8}
+              onPress={addDistanceRate}
+            >
+              <View style={[styles.rowIcon, { backgroundColor: '#DDF8E8' }]}>
+                <MaterialCommunityIcons name="plus" size={20} color="#00A85A" />
+              </View>
+              <View style={styles.rowBody}>
+                <Text style={[styles.rowLabel, { color: TEAL }]}>
+                  Add distance rate
+                </Text>
+                <Text style={styles.rowHint}>
+                  Charge per km on every order
+                </Text>
+              </View>
+              <MaterialCommunityIcons name="chevron-right" size={20} color={TEXT_MUTED} />
+            </TouchableOpacity>
+          )}
 
           {services.map((service) => (
             <View key={service.id} style={styles.row}>
@@ -910,6 +1018,53 @@ export default function SettingsScreen({ navigation }: Props) {
             >
               <LinearGradient colors={GRADIENT_HEADER} style={styles.editSave}>
                 <Text style={styles.editSaveText}>Save fee</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={showDistanceModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowDistanceModal(false)}
+      >
+        <View style={styles.editOverlay}>
+          <View style={styles.editCard}>
+            <View style={styles.editHeader}>
+              <Text style={styles.editTitle}>Distance Rate</Text>
+              <TouchableOpacity
+                style={styles.editClose}
+                onPress={() => setShowDistanceModal(false)}
+              >
+                <MaterialCommunityIcons name="close" size={20} color={TEXT_MUTED} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.editLabel}>Distance rate per km (R)</Text>
+            <View style={[styles.editInputField, distanceError && styles.editInputError]}>
+              <MaterialCommunityIcons name="map-marker-distance" size={18} color={TEXT_MUTED} />
+              <TextInput
+                style={styles.editInput}
+                value={distancePriceInput}
+                onChangeText={setDistancePriceInput}
+                placeholder="0.00"
+                placeholderTextColor={TEXT_MUTED}
+                keyboardType="numeric"
+              />
+            </View>
+            {distanceError ? (
+              <Text style={styles.editErrorText}>{distanceError}</Text>
+            ) : null}
+
+            <TouchableOpacity
+              style={styles.editSaveTouch}
+              activeOpacity={0.9}
+              onPress={saveDistancePrice}
+            >
+              <LinearGradient colors={GRADIENT_HEADER} style={styles.editSave}>
+                <Text style={styles.editSaveText}>Save rate</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
