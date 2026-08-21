@@ -72,6 +72,7 @@ export type PriceEntry = {
 export type Pricing = {
   delivery: PriceEntry;
   express: PriceEntry;
+  distanceRate?: PriceEntry | null;
 };
 
 export type AdminService = {
@@ -211,14 +212,10 @@ const seedDrivers: AdminDriver[] = [
 const DEFAULT_PRICING: Pricing = {
   delivery: { price: 60, enabled: true },
   express: { price: 5, enabled: true },
+  distanceRate: { price: 5, enabled: true },
 };
 
-const DEFAULT_SERVICES: AdminService[] = [
-  { id: "s1", name: "Wash & Fold (per kg)", price: 55 },
-  { id: "s2", name: "Wash & Iron (per kg)", price: 85 },
-  { id: "s3", name: "Dry Cleaning (per item)", price: 45 },
-  { id: "s4", name: "Pickup & Delivery", price: 60 },
-];
+const DEFAULT_SERVICES: AdminService[] = [];
 
 export function AdminProvider({ children }: { children: React.ReactNode }) {
   const [orders, setOrders] = useState<AdminOrder[]>([]);
