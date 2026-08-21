@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
@@ -38,6 +38,8 @@ const renderIcon = (routeName: string) => ({ color, size }: TabIconProps) => {
   );
 };
 
+const isWeb = Platform.OS === 'web';
+
 export default function CustomerTabs() {
   return (
     <Tab.Navigator
@@ -67,11 +69,23 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#E8ECF1',
     paddingTop: 6,
-    paddingBottom: 6,
-    height: 66,
+    paddingBottom: isWeb ? 10 : 6,
+    height: isWeb ? 72 : 66,
+    ...(isWeb ? {
+      maxWidth: 600,
+      alignSelf: 'center',
+      width: '100%',
+      borderTopLeftRadius: 16,
+      borderTopRightRadius: 16,
+      shadowColor: '#0F363F',
+      shadowOffset: { width: 0, height: -4 },
+      shadowOpacity: 0.08,
+      shadowRadius: 12,
+    } : {}),
   },
   item: {
     paddingVertical: 2,
+    ...(isWeb ? { minWidth: 64 } : {}),
   },
   label: {
     fontFamily: 'Poppins_500Medium',

@@ -7,7 +7,6 @@ import React, {
 } from 'react';
 
 import type { CustomerOrder, OrderStatus } from '../data/orders';
-import { seedOrders } from '../data/orders';
 
 type OrdersContextValue = {
   orders: CustomerOrder[];
@@ -19,7 +18,7 @@ type OrdersContextValue = {
 const OrdersContext = createContext<OrdersContextValue | undefined>(undefined);
 
 export function OrdersProvider({ children }: { children: React.ReactNode }) {
-  const [orders, setOrders] = useState<CustomerOrder[]>(seedOrders);
+  const [orders, setOrders] = useState<CustomerOrder[]>([]);
 
   const addOrder = useCallback((order: CustomerOrder) => {
     setOrders((prev) => [order, ...prev]);

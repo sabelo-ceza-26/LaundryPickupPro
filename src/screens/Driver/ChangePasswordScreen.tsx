@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
     KeyboardAvoidingView,
-    Modal,
     Platform,
     ScrollView,
     StyleSheet,
@@ -11,12 +10,30 @@ import {
     View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useFonts, Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold } from '@expo-google-fonts/poppins';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import type { DriverStackParamList } from '../../navigation/DriverNavigator';
 import { useAuth } from '../../hooks/useAuth';
 import { isMinLength, isRequired, matches } from '../../utils/validation';
+import BookingHeader from '../../components/BookingHeader';
+import FancyAlert from '../../components/FancyAlert';
+
+const TEXT_DARK = '#1F2933';
+const TEXT_MUTED = '#7A869A';
+const WHITE = '#FFFFFF';
+const BLUE = '#2E6BFF';
+const PURPLE = '#7857FF';
+const BORDER = '#E8ECF1';
+const DANGER = '#E5484D';
+const GREEN = '#00A85A';
+const GREEN_TINT = '#DDF8E8';
+
+const GRADIENT_PRIMARY = [BLUE, PURPLE] as const;
+
+const isWeb = Platform.OS === 'web';
 
 type Props = NativeStackScreenProps<
     DriverStackParamList,
@@ -26,6 +43,13 @@ type Props = NativeStackScreenProps<
 export default function ChangePasswordScreen({
     navigation,
 }: Props) {
+    const [fontsLoaded] = useFonts({
+        Poppins_400Regular,
+        Poppins_500Medium,
+        Poppins_600SemiBold,
+        Poppins_700Bold,
+    });
+
     const { changePassword } = useAuth();
 
     const [current, setCurrent] = useState('');
@@ -78,6 +102,8 @@ export default function ChangePasswordScreen({
         setShowSuccess(true);
     };
 
+    if (!fontsLoaded) return null;
+
     return (
         <SafeAreaView style={styles.safeArea}>
             <KeyboardAvoidingView
@@ -88,21 +114,11 @@ export default function ChangePasswordScreen({
                     contentContainerStyle={styles.container}
                     keyboardShouldPersistTaps="handled"
                 >
-
-                    {/* Header */}
-                    <View style={styles.header}>
-                        <TouchableOpacity onPress={() => navigation.goBack()}>
-                            <Ionicons
-                                name="chevron-back"
-                                size={28}
-                                color="#12263A"
-                            />
-                        </TouchableOpacity>
-                        <Text style={styles.title}>
-                            Change Password
-                        </Text>
-                        <View style={{ width: 28 }} />
-                    </View>
+                    <BookingHeader
+                        title="Change Password"
+                        onBack={() => navigation.goBack()}
+                        showCancelBooking={false}
+                    />
 
                     <Text style={styles.subtitle}>
                         Use at least 8 characters. Don't use the same
@@ -120,10 +136,10 @@ export default function ChangePasswordScreen({
                                 errors.current && styles.inputError,
                             ]}
                         >
-                            <Ionicons
-                                name="lock-closed-outline"
+                            <MaterialCommunityIcons
+                                name="lock-outline"
                                 size={18}
-                                color="#7A8492"
+                                color={TEXT_MUTED}
                             />
                             <TextInput
                                 style={styles.input}
@@ -146,14 +162,14 @@ export default function ChangePasswordScreen({
                                     setCurrentHidden((prev) => !prev)
                                 }
                             >
-                                <Ionicons
+                                <MaterialCommunityIcons
                                     name={
                                         currentHidden
                                             ? 'eye-outline'
                                             : 'eye-off-outline'
                                     }
                                     size={20}
-                                    color="#7A8492"
+                                    color={TEXT_MUTED}
                                 />
                             </TouchableOpacity>
                         </View>
@@ -172,10 +188,10 @@ export default function ChangePasswordScreen({
                                 errors.newPassword && styles.inputError,
                             ]}
                         >
-                            <Ionicons
+                            <MaterialCommunityIcons
                                 name="key-outline"
                                 size={18}
-                                color="#7A8492"
+                                color={TEXT_MUTED}
                             />
                             <TextInput
                                 style={styles.input}
@@ -198,14 +214,14 @@ export default function ChangePasswordScreen({
                                     setNewHidden((prev) => !prev)
                                 }
                             >
-                                <Ionicons
+                                <MaterialCommunityIcons
                                     name={
                                         newHidden
                                             ? 'eye-outline'
                                             : 'eye-off-outline'
                                     }
                                     size={20}
-                                    color="#7A8492"
+                                    color={TEXT_MUTED}
                                 />
                             </TouchableOpacity>
                         </View>
@@ -224,10 +240,10 @@ export default function ChangePasswordScreen({
                                 errors.confirm && styles.inputError,
                             ]}
                         >
-                            <Ionicons
-                                name="shield-checkmark-outline"
+                            <MaterialCommunityIcons
+                                name="shield-check-outline"
                                 size={18}
-                                color="#7A8492"
+                                color={TEXT_MUTED}
                             />
                             <TextInput
                                 style={styles.input}
@@ -250,14 +266,14 @@ export default function ChangePasswordScreen({
                                     setConfirmHidden((prev) => !prev)
                                 }
                             >
-                                <Ionicons
+                                <MaterialCommunityIcons
                                     name={
                                         confirmHidden
                                             ? 'eye-outline'
                                             : 'eye-off-outline'
                                     }
                                     size={20}
-                                    color="#7A8492"
+                                    color={TEXT_MUTED}
                                 />
                             </TouchableOpacity>
                         </View>
@@ -268,12 +284,17 @@ export default function ChangePasswordScreen({
                         )}
 
                         <TouchableOpacity
-                            style={styles.saveButton}
+                            activeOpacity={0.85}
                             onPress={handleChangePassword}
                         >
-                            <Text style={styles.saveButtonText}>
-                                Update password
-                            </Text>
+                            <LinearGradient
+                                colors={GRADIENT_PRIMARY}
+                                style={styles.saveButton}
+                            >
+                                <Text style={styles.saveButtonText}>
+                                    Update password
+                                </Text>
+                            </LinearGradient>
                         </TouchableOpacity>
 
                     </View>
@@ -281,46 +302,18 @@ export default function ChangePasswordScreen({
                 </ScrollView>
             </KeyboardAvoidingView>
 
-            {/* Success Modal */}
-            <Modal
+            <FancyAlert
                 visible={showSuccess}
-                transparent
-                animationType="fade"
-                onRequestClose={() => {
+                icon="check-circle-outline"
+                iconColor={GREEN}
+                iconBackground={GREEN_TINT}
+                title="Password updated"
+                message="Your password has been changed successfully."
+                onClose={() => {
                     setShowSuccess(false);
                     navigation.goBack();
                 }}
-            >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalCard}>
-                        <View style={styles.modalIcon}>
-                            <Ionicons
-                                name="checkmark"
-                                size={32}
-                                color="#16A34A"
-                            />
-                        </View>
-                        <Text style={styles.modalTitle}>
-                            Password updated
-                        </Text>
-                        <Text style={styles.modalMessage}>
-                            Your password has been changed
-                            successfully.
-                        </Text>
-                        <TouchableOpacity
-                            style={styles.modalButton}
-                            onPress={() => {
-                                setShowSuccess(false);
-                                navigation.goBack();
-                            }}
-                        >
-                            <Text style={styles.modalButtonText}>
-                                Done
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </Modal>
+            />
 
         </SafeAreaView>
     );
@@ -330,7 +323,7 @@ const styles = StyleSheet.create({
 
     safeArea: {
         flex: 1,
-        backgroundColor: '#F5F7FA',
+        backgroundColor: WHITE,
     },
 
     flex: {
@@ -338,45 +331,39 @@ const styles = StyleSheet.create({
     },
 
     container: {
-        padding: 20,
+        backgroundColor: '#F5F7FA',
+        paddingHorizontal: isWeb ? 32 : 20,
+        paddingVertical: 20,
         paddingBottom: 30,
-    },
-
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-
-    title: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: '#12263A',
+        ...(isWeb ? { maxWidth: 600, alignSelf: 'center', width: '100%' } : {}),
     },
 
     subtitle: {
+        fontFamily: 'Poppins_400Regular',
         fontSize: 13,
-        color: '#7A8492',
+        color: TEXT_MUTED,
         lineHeight: 20,
         marginBottom: 18,
     },
 
     card: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 14,
-        padding: 16,
-        elevation: 2,
-        shadowColor: '#000000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 4,
+        backgroundColor: WHITE,
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: BORDER,
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        elevation: 1,
+        shadowColor: '#26384A',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
     },
 
     label: {
+        fontFamily: 'Poppins_500Medium',
         fontSize: 12,
-        fontWeight: '600',
-        color: '#7A8492',
+        color: TEXT_MUTED,
         marginBottom: 8,
     },
 
@@ -384,107 +371,46 @@ const styles = StyleSheet.create({
         height: 50,
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#FFFFFF',
-        borderWidth: 1,
-        borderColor: '#E8ECF1',
-        borderRadius: 12,
+        backgroundColor: WHITE,
+        borderWidth: 1.5,
+        borderColor: BORDER,
+        borderRadius: 14,
         paddingHorizontal: 14,
         marginBottom: 14,
     },
 
     inputError: {
-        borderColor: '#E11D48',
+        borderColor: DANGER,
     },
 
     input: {
         flex: 1,
+        fontFamily: 'Poppins_400Regular',
         marginLeft: 10,
         fontSize: 14,
-        color: '#12263A',
+        color: TEXT_DARK,
     },
 
     errorText: {
+        fontFamily: 'Poppins_400Regular',
         fontSize: 11,
-        color: '#E11D48',
+        color: DANGER,
         marginTop: -8,
         marginBottom: 10,
     },
 
     saveButton: {
-        backgroundColor: '#173D8F',
         height: 50,
-        borderRadius: 12,
+        borderRadius: 14,
         justifyContent: 'center',
         alignItems: 'center',
         marginTop: 4,
     },
 
     saveButtonText: {
-        color: '#FFFFFF',
+        fontFamily: 'Poppins_700Bold',
         fontSize: 15,
-        fontWeight: '700',
-    },
-
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(18, 38, 58, 0.45)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingHorizontal: 40,
-    },
-
-    modalCard: {
-        width: '100%',
-        maxWidth: 340,
-        backgroundColor: '#FFFFFF',
-        borderRadius: 18,
-        padding: 24,
-        alignItems: 'center',
-        elevation: 8,
-        shadowColor: '#000000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 12,
-    },
-
-    modalIcon: {
-        width: 60,
-        height: 60,
-        borderRadius: 30,
-        backgroundColor: '#E9F9EF',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 14,
-    },
-
-    modalTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: '#12263A',
-    },
-
-    modalMessage: {
-        marginTop: 6,
-        fontSize: 14,
-        color: '#7A8492',
-        textAlign: 'center',
-        lineHeight: 20,
-    },
-
-    modalButton: {
-        alignSelf: 'stretch',
-        height: 48,
-        borderRadius: 12,
-        backgroundColor: '#173D8F',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginTop: 20,
-    },
-
-    modalButtonText: {
-        fontSize: 15,
-        fontWeight: '700',
-        color: '#FFFFFF',
+        color: WHITE,
     },
 
 });

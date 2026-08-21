@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -83,6 +84,8 @@ const menuRows: MenuRow[] = [
     onPress: (navigation) => navigation.navigate('Support'),
   },
 ];
+
+const isWeb = Platform.OS === 'web';
 
 export default function ProfileScreen() {
   const { user, signOut, updateUser } = useAuth();
@@ -368,9 +371,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F7FA',
   },
   container: {
-    paddingHorizontal: 20,
+    paddingHorizontal: isWeb ? 32 : 20,
     paddingTop: 16,
     paddingBottom: 110,
+    ...(isWeb ? { maxWidth: 600, alignSelf: 'center', width: '100%' } : {}),
   },
   header: {
     flexDirection: 'row',

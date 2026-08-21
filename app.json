@@ -19,7 +19,11 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "output": "single",
+      "name": "Laundry Pickup Pro",
+      "description": "Laundry pickup and delivery service"
     },
     "plugins": [
       "@react-native-community/datetimepicker",

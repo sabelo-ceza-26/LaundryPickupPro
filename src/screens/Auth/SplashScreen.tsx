@@ -1,5 +1,5 @@
 import React from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -7,6 +7,8 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { AuthStackParamList } from '../../navigation/AuthNavigator';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Splash'>;
+
+const isWeb = Platform.OS === 'web';
 
 export default function SplashScreen({ navigation }: Props) {
   return (
@@ -95,10 +97,11 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    ...(isWeb ? { maxWidth: 500, alignSelf: 'center', width: '100%' } : {}),
   },
   logo: {
-    width: 330,
-    height: 330,
+    width: isWeb ? 260 : 330,
+    height: isWeb ? 260 : 330,
   },
   tagline: {
     color: 'rgba(62, 40, 92, 0.85)',
@@ -110,6 +113,7 @@ const styles = StyleSheet.create({
   footer: {
     paddingHorizontal: 28,
     paddingBottom: 36,
+    ...(isWeb ? { maxWidth: 500, alignSelf: 'center', width: '100%' } : {}),
   },
   ctaButton: {
     height: 56,

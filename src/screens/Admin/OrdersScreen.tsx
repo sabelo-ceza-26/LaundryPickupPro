@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import {
   FlatList,
+  Platform,
   StyleSheet,
   Text,
   TextInput,
@@ -19,13 +20,15 @@ import {
   Poppins_700Bold,
 } from '@expo-google-fonts/poppins';
 
-import type { AdminStackParamList } from '../../navigation/AdminNavigator';
+import type { AdminStackParamList, AdminOrdersFilter } from '../../navigation/AdminNavigator';
 import { useAdmin } from '../../context/AdminContext';
 import type {
   AdminOrder,
   AdminOrderStatus,
 } from '../../context/AdminContext';
 import { getOrderTotal } from '../../context/AdminContext';
+import { useDriverOrders } from '../../context/DriverOrdersContext';
+import type { Order } from '../../navigation/DriverNavigator';
 import AdminOrderDetailModal from '../../components/AdminOrderDetailModal';
 import AdminAddOrderModal from '../../components/AdminAddOrderModal';
 import FancyAlert from '../../components/FancyAlert';
@@ -33,7 +36,7 @@ import { formatMoney } from '../../utils/format';
 
 type Props = NativeStackScreenProps<AdminStackParamList, 'Orders'>;
 
-type FilterOption = 'All' | AdminOrderStatus;
+type FilterOption = AdminOrdersFilter;
 
 const BLUE = '#2E6BFF';
 const BLUE_TINT = '#E4EEFF';
@@ -56,15 +59,19 @@ const STATUS_META: Record<
 
 const FILTERS: FilterOption[] = [
   'All',
+  'Unassigned',
   'Pending',
   'In Progress',
   'Completed',
 ];
 
-export default function OrdersScreen({ navigation }: Props) {
-  const { orders, updateOrderStatus, addOrder } = useAdmin();
+const isWeb = Platform.OS === 'web';
+
+export default function OrdersScreen({ navigation, route }: Props) {
+  const { orders, updateOrderStatus, assignDriver, addOrder } = useAdmin();
+  const { addOrder: addDriverOrder } = useDriverOrders();
   const [selectedFilter, setSelectedFilter] =
-    useState<FilterOption>('All');
+    useState<FilterOption>(route.params?.filter ?? 'All');
   const [searchText, setSearchText] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
   const [showDetail, setShowDetail] = useState(false);
@@ -83,7 +90,9 @@ export default function OrdersScreen({ navigation }: Props) {
     return orders.filter((order) => {
       const matchesFilter =
         selectedFilter === 'All' ||
-        order.status === selectedFilter;
+        (selectedFilter === 'Unassigned'
+          ? !(order.driver ?? '').trim()
+          : order.status === selectedFilter);
 
       const matchesSearch =
         normalizedSearch.length === 0 ||
@@ -99,6 +108,39 @@ export default function OrdersScreen({ navigation }: Props) {
   }, [orders, searchText, selectedFilter]);
 
   if (!fontsLoaded) return null;
+
+  const handleAssignDriver = (orderId: string, driverName: string, driverPhone: string) => {
+    assignDriver(orderId, driverName, driverPhone);
+
+    const adminOrder = orders.find((o) => o.id === orderId);
+    if (adminOrder) {
+      const driverOrder: Order = {
+        id: Date.now(),
+        orderNumber: adminOrder.id,
+        type: 'Pickup',
+        customer: adminOrder.customerName,
+        phone: adminOrder.customerPhone,
+        address: adminOrder.pickupAddress,
+        time: adminOrder.pickupTime,
+        status: 'Assigned',
+        driver: driverName,
+        notes: adminOrder.instructions || undefined,
+      };
+      addDriverOrder(driverOrder);
+    }
+
+    setSelectedOrder((current) =>
+      current
+        ? {
+            ...current,
+            driver: driverName,
+            driverPhone,
+            status:
+              current.status === 'Pending' ? 'In Progress' : current.status,
+          }
+        : current
+    );
+  };
 
   const renderOrder = ({ item }: { item: AdminOrder }) => {
     const meta = STATUS_META[item.status];
@@ -137,7 +179,9 @@ export default function OrdersScreen({ navigation }: Props) {
 
           <View style={styles.driverRow}>
             <MaterialCommunityIcons name="account-tie-outline" size={13} color={TEXT_MUTED} />
-            <Text style={styles.driverText}>Driver: {item.driver}</Text>
+            <Text style={[styles.driverText, !item.driver && styles.unassignedText]}>
+              Driver: {item.driver || 'Unassigned'}
+            </Text>
           </View>
 
           <View style={styles.divider} />
@@ -236,8 +280,16 @@ export default function OrdersScreen({ navigation }: Props) {
             <View style={styles.emptyIconWrap}>
               <MaterialCommunityIcons name="package-variant-closed" size={48} color={BLUE} />
             </View>
-            <Text style={styles.emptyTitle}>No orders found</Text>
-            <Text style={styles.emptySubtitle}>Try another search term or filter.</Text>
+            <Text style={styles.emptyTitle}>
+              {selectedFilter === 'Unassigned' && searchText.trim().length === 0
+                ? 'No unassigned orders'
+                : 'No orders found'}
+            </Text>
+            <Text style={styles.emptySubtitle}>
+              {selectedFilter === 'Unassigned' && searchText.trim().length === 0
+                ? 'Every order has a driver assigned.'
+                : 'Try another search term or filter.'}
+            </Text>
           </View>
         }
       />
@@ -254,6 +306,7 @@ export default function OrdersScreen({ navigation }: Props) {
             );
           }
         }}
+        onAssignDriver={handleAssignDriver}
       />
 
       <AdminAddOrderModal
@@ -319,8 +372,9 @@ const styles = StyleSheet.create({
     color: WHITE,
   },
   listContent: {
-    paddingHorizontal: 20,
+    paddingHorizontal: isWeb ? 32 : 20,
     paddingBottom: 40,
+    ...(isWeb ? { maxWidth: 700, alignSelf: 'center', width: '100%' } : {}),
   },
   searchWrap: {
     flexDirection: 'row',
@@ -467,6 +521,10 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: TEXT_MUTED,
     marginLeft: 5,
+  },
+  unassignedText: {
+    color: '#E19A00',
+    fontWeight: '600',
   },
   divider: {
     height: 1,

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import {
   Alert,
+  Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -21,6 +23,7 @@ import {
 
 import BookingHeader from '../../components/BookingHeader';
 import { useOrders } from '../../context/OrdersContext';
+import { useAuth } from '../../hooks/useAuth';
 import type { CustomerStackParamList } from '../../navigation/types';
 import type { OrderStatus } from '../../data/orders';
 import { isOrderActive, isOrderCancellable } from '../../data/orders';
@@ -106,9 +109,12 @@ function DetailRow({
   );
 }
 
+const isWeb = Platform.OS === 'web';
+
 export default function OrderDetailsScreen({ navigation, route }: Props) {
   const { order: initialOrder } = route.params;
   const { orders, updateOrderStatus } = useOrders();
+  const { user } = useAuth();
   const order = orders.find((o) => o.id === initialOrder.id) ?? initialOrder;
   const [fontsLoaded] = useFonts({
     Poppins_400Regular,
@@ -116,6 +122,7 @@ export default function OrderDetailsScreen({ navigation, route }: Props) {
     Poppins_600SemiBold,
     Poppins_700Bold,
   });
+  const [showCancelModal, setShowCancelModal] = useState(false);
 
   if (!fontsLoaded) return null;
 
@@ -129,22 +136,24 @@ export default function OrderDetailsScreen({ navigation, route }: Props) {
     navigation.navigate('Main', { screen: 'Track', params: { order } });
   };
 
+  const handleChat = () => {
+    if (!order.driver) return;
+    navigation.navigate('Chat', {
+      orderId: order.id,
+      contactName: order.driver,
+      myRole: 'customer',
+      myName: user?.name ?? 'Customer',
+    });
+  };
+
   const handleCancel = () => {
-    Alert.alert(
-      'Cancel order',
-      `Are you sure you want to cancel ${order.reference}?`,
-      [
-        { text: 'Keep order', style: 'cancel' },
-        {
-          text: 'Cancel order',
-          style: 'destructive',
-          onPress: () => {
-            updateOrderStatus(order.id, 'Cancelled');
-            Alert.alert('Order cancelled', `${order.reference} has been cancelled.`);
-          },
-        },
-      ]
-    );
+    setShowCancelModal(true);
+  };
+
+  const confirmCancel = () => {
+    setShowCancelModal(false);
+    updateOrderStatus(order.id, 'Cancelled');
+    Alert.alert('Order cancelled', `${order.reference} has been cancelled.`);
   };
 
   return (
@@ -196,11 +205,6 @@ export default function OrderDetailsScreen({ navigation, route }: Props) {
                 </View>
                 <View style={styles.itemBody}>
                   <Text style={styles.itemName}>{item.name}</Text>
-                  <View style={[styles.qtyBadge, { backgroundColor: accent.tint }]}>
-                    <Text style={[styles.itemQty, { color: accent.color }]}>
-                      Qty {item.quantity}
-                    </Text>
-                  </View>
                 </View>
                 <Text style={styles.itemPrice}>
                   {formatMoney(item.price * item.quantity)}
@@ -290,6 +294,19 @@ export default function OrderDetailsScreen({ navigation, route }: Props) {
             </LinearGradient>
           </TouchableOpacity>
         )}
+        {active && !!order.driver && (
+          <TouchableOpacity
+            style={[styles.footerButton, styles.chatButtonTouch]}
+            activeOpacity={0.9}
+            onPress={handleChat}
+          >
+            <LinearGradient colors={['#7857FF', '#5334E0']} style={styles.chatButton}>
+              <View style={styles.shine} />
+              <MaterialCommunityIcons name="chat-outline" size={18} color={WHITE} />
+              <Text style={styles.chatButtonText}>Chat with Driver</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
         {cancellable && (
           <TouchableOpacity style={styles.cancelButtonTouch} onPress={handleCancel}>
             <LinearGradient colors={GRADIENT_DANGER} style={styles.cancelButton}>
@@ -299,6 +316,52 @@ export default function OrderDetailsScreen({ navigation, route }: Props) {
           </TouchableOpacity>
         )}
       </View>
+
+      <Modal
+        visible={showCancelModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowCancelModal(false)}
+      >
+        <View style={styles.cancelOverlay}>
+          <View style={styles.cancelCard}>
+            <View style={styles.cancelIconGlow}>
+              <View style={styles.cancelIconCircle}>
+                <MaterialCommunityIcons name="close-circle-outline" size={38} color={colorsDanger} />
+              </View>
+            </View>
+            <Text style={styles.cancelTitle}>Cancel Order?</Text>
+            <Text style={styles.cancelMessage}>
+              Are you sure you want to cancel{' '}
+              <Text style={styles.cancelRef}>{order.reference}</Text>?
+              {'\n'}This action cannot be undone.
+            </Text>
+            <View style={styles.cancelActions}>
+              <TouchableOpacity
+                style={styles.cancelKeepTouch}
+                activeOpacity={0.85}
+                onPress={() => setShowCancelModal(false)}
+              >
+                <View style={styles.cancelKeepButton}>
+                  <MaterialCommunityIcons name="arrow-left" size={16} color={TEAL_HEADING} />
+                  <Text style={styles.cancelKeepText}>Keep Order</Text>
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.cancelConfirmTouch}
+                activeOpacity={0.85}
+                onPress={confirmCancel}
+              >
+                <LinearGradient colors={GRADIENT_DANGER} style={styles.cancelConfirmButton}>
+                  <View style={styles.cancelConfirmShine} />
+                  <MaterialCommunityIcons name="close" size={16} color={WHITE} />
+                  <Text style={styles.cancelConfirmText}>Cancel Order</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -312,9 +375,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F7FA',
   },
   container: {
-    paddingHorizontal: 20,
+    paddingHorizontal: isWeb ? 32 : 20,
     paddingTop: 8,
     paddingBottom: 110,
+    ...(isWeb ? { maxWidth: 600, alignSelf: 'center', width: '100%' } : {}),
   },
   hero: {
     flexDirection: 'row',
@@ -594,5 +658,143 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 16,
     color: WHITE,
+  },
+  chatButtonTouch: {
+    borderRadius: 18,
+    elevation: 3,
+    shadowColor: '#7857FF',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+  },
+  chatButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 56,
+    borderRadius: 18,
+    overflow: 'hidden',
+  },
+  chatButtonText: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 16,
+    color: WHITE,
+    marginLeft: 8,
+  },
+  cancelOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(18, 38, 58, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 28,
+  },
+  cancelCard: {
+    backgroundColor: WHITE,
+    borderRadius: 28,
+    paddingHorizontal: 26,
+    paddingTop: 32,
+    paddingBottom: 24,
+    alignItems: 'center',
+    width: '100%',
+    maxWidth: 360,
+    elevation: 18,
+    shadowColor: '#1A1A2E',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.3,
+    shadowRadius: 24,
+  },
+  cancelIconGlow: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: 'rgba(229, 72, 77, 0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 18,
+  },
+  cancelIconCircle: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: '#FEE4E4',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cancelTitle: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 19,
+    color: TEXT_DARK,
+    marginBottom: 8,
+  },
+  cancelMessage: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 13,
+    lineHeight: 21,
+    color: TEXT_MUTED,
+    textAlign: 'center',
+    marginBottom: 24,
+    paddingHorizontal: 4,
+  },
+  cancelRef: {
+    fontFamily: 'Poppins_600SemiBold',
+    color: colorsDanger,
+  },
+  cancelActions: {
+    flexDirection: 'row',
+    width: '100%',
+    gap: 10,
+  },
+  cancelKeepTouch: {
+    flex: 1,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: BORDER,
+    backgroundColor: '#F9FAFB',
+  },
+  cancelKeepButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 50,
+    borderRadius: 14,
+  },
+  cancelKeepText: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 14,
+    color: TEAL_HEADING,
+    marginLeft: 6,
+  },
+  cancelConfirmTouch: {
+    flex: 1,
+    borderRadius: 14,
+    elevation: 6,
+    shadowColor: colorsDanger,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+  },
+  cancelConfirmButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 50,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  cancelConfirmShine: {
+    position: 'absolute',
+    top: -20,
+    left: -20,
+    width: 60,
+    height: 80,
+    borderRadius: 30,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    transform: [{ rotate: '20deg' }],
+  },
+  cancelConfirmText: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 14,
+    color: WHITE,
+    marginLeft: 6,
   },
 });

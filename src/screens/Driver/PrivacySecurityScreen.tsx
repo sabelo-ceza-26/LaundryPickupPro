@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
     Alert,
+    Platform,
     ScrollView,
     StyleSheet,
     Switch,
@@ -9,10 +10,25 @@ import {
     View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { useFonts, Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold } from '@expo-google-fonts/poppins';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import type { DriverStackParamList } from '../../navigation/DriverNavigator';
+import BookingHeader from '../../components/BookingHeader';
+
+const isWeb = Platform.OS === 'web';
+
+const TEXT_DARK = '#1F2933';
+const TEXT_MUTED = '#7A869A';
+const WHITE = '#FFFFFF';
+const BLUE = '#2E6BFF';
+const BLUE_TINT = '#E4EEFF';
+const GREEN = '#00A85A';
+const GREEN_TINT = '#DDF8E8';
+const BORDER = '#E8ECF1';
+const DANGER = '#E5484D';
+const TEAL_HEADING = '#0E7A86';
 
 type Props = NativeStackScreenProps<
     DriverStackParamList,
@@ -22,7 +38,7 @@ type Props = NativeStackScreenProps<
 type ToggleRow = {
     label: string;
     hint: string;
-    icon: keyof typeof Ionicons.glyphMap;
+    icon: keyof typeof MaterialCommunityIcons.glyphMap;
     color: string;
     key: 'biometric' | 'location';
 };
@@ -30,6 +46,13 @@ type ToggleRow = {
 export default function PrivacySecurityScreen({
     navigation,
 }: Props) {
+    const [fontsLoaded] = useFonts({
+        Poppins_400Regular,
+        Poppins_500Medium,
+        Poppins_600SemiBold,
+        Poppins_700Bold,
+    });
+
     const [biometric, setBiometric] = useState(false);
     const [location, setLocation] = useState(true);
 
@@ -37,15 +60,15 @@ export default function PrivacySecurityScreen({
         {
             label: 'Biometric login',
             hint: 'Unlock the app with Face ID or fingerprint',
-            icon: 'finger-print-outline',
-            color: '#16A34A',
+            icon: 'fingerprint',
+            color: GREEN,
             key: 'biometric',
         },
         {
             label: 'Share location while on route',
             hint: 'Let customers see live delivery updates',
-            icon: 'location-outline',
-            color: '#173D8F',
+            icon: 'map-marker-outline',
+            color: BLUE,
             key: 'location',
         },
     ];
@@ -71,24 +94,17 @@ export default function PrivacySecurityScreen({
         );
     };
 
+    if (!fontsLoaded) return null;
+
     return (
         <SafeAreaView style={styles.safeArea}>
             <ScrollView contentContainerStyle={styles.container}>
 
-                {/* Header */}
-                <View style={styles.header}>
-                    <TouchableOpacity onPress={() => navigation.goBack()}>
-                        <Ionicons
-                            name="chevron-back"
-                            size={28}
-                            color="#12263A"
-                        />
-                    </TouchableOpacity>
-                    <Text style={styles.title}>
-                        Privacy & Security
-                    </Text>
-                    <View style={{ width: 28 }} />
-                </View>
+                <BookingHeader
+                    title="Privacy & Security"
+                    onBack={() => navigation.goBack()}
+                    showCancelBooking={false}
+                />
 
                 <Text style={styles.subtitle}>
                     Manage how your account stays secure and what
@@ -111,7 +127,7 @@ export default function PrivacySecurityScreen({
                                     { backgroundColor: `${row.color}1A` },
                                 ]}
                             >
-                                <Ionicons
+                                <MaterialCommunityIcons
                                     name={row.icon}
                                     size={20}
                                     color={row.color}
@@ -130,11 +146,11 @@ export default function PrivacySecurityScreen({
                                 onValueChange={() => toggle(row.key)}
                                 trackColor={{
                                     false: '#D5DCE3',
-                                    true: '#173D8F',
+                                    true: BLUE,
                                 }}
                                 thumbColor={
                                     currentValue(row.key)
-                                        ? '#FFFFFF'
+                                        ? WHITE
                                         : '#F5F7FA'
                                 }
                             />
@@ -156,13 +172,13 @@ export default function PrivacySecurityScreen({
                         <View
                             style={[
                                 styles.rowIcon,
-                                { backgroundColor: '#E8EFFD' },
+                                { backgroundColor: BLUE_TINT },
                             ]}
                         >
-                            <Ionicons
+                            <MaterialCommunityIcons
                                 name="key-outline"
                                 size={20}
-                                color="#173D8F"
+                                color={BLUE}
                             />
                         </View>
                         <View style={styles.rowBody}>
@@ -173,10 +189,10 @@ export default function PrivacySecurityScreen({
                                 Update your account password
                             </Text>
                         </View>
-                        <Ionicons
-                            name="chevron-forward"
+                        <MaterialCommunityIcons
+                            name="chevron-right"
                             size={20}
-                            color="#B9BEC7"
+                            color={TEXT_MUTED}
                         />
                     </TouchableOpacity>
 
@@ -190,33 +206,33 @@ export default function PrivacySecurityScreen({
                                 { backgroundColor: '#FDECEC' },
                             ]}
                         >
-                            <Ionicons
-                                name="refresh-outline"
+                            <MaterialCommunityIcons
+                                name="refresh"
                                 size={20}
-                                color="#E11D48"
+                                color={DANGER}
                             />
                         </View>
                         <View style={styles.rowBody}>
-                            <Text style={[styles.rowLabel, { color: '#E11D48' }]}>
+                            <Text style={[styles.rowLabel, { color: DANGER }]}>
                                 Reset account
                             </Text>
                             <Text style={styles.rowHint}>
                                 Reset security settings and sign out
                             </Text>
                         </View>
-                        <Ionicons
-                            name="chevron-forward"
+                        <MaterialCommunityIcons
+                            name="chevron-right"
                             size={20}
-                            color="#B9BEC7"
+                            color={TEXT_MUTED}
                         />
                     </TouchableOpacity>
                 </View>
 
                 <View style={styles.infoCard}>
-                    <Ionicons
-                        name="shield-checkmark-outline"
+                    <MaterialCommunityIcons
+                        name="shield-check-outline"
                         size={20}
-                        color="#16A34A"
+                        color={GREEN}
                     />
                     <Text style={styles.infoText}>
                         Your personal data is encrypted and never shared
@@ -233,50 +249,39 @@ const styles = StyleSheet.create({
 
     safeArea: {
         flex: 1,
-        backgroundColor: '#F5F7FA',
+        backgroundColor: WHITE,
     },
 
     container: {
-        padding: 20,
+        paddingHorizontal: isWeb ? 32 : 20,
+        paddingVertical: 20,
         paddingBottom: 30,
-    },
-
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-
-    title: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: '#12263A',
+        backgroundColor: '#F5F7FA',
+        ...(isWeb ? { maxWidth: 600, alignSelf: 'center', width: '100%' } : {}),
     },
 
     subtitle: {
+        fontFamily: 'Poppins_400Regular',
         fontSize: 13,
-        color: '#7A8492',
+        color: TEXT_MUTED,
         lineHeight: 20,
         marginBottom: 18,
     },
 
     sectionTitle: {
+        fontFamily: 'Poppins_600SemiBold',
         fontSize: 15,
-        fontWeight: '700',
-        color: '#12263A',
+        color: TEAL_HEADING,
         marginBottom: 10,
     },
 
     card: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 14,
-        elevation: 2,
-        shadowColor: '#000000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 4,
+        backgroundColor: WHITE,
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: BORDER,
         marginBottom: 18,
+        overflow: 'hidden',
     },
 
     row: {
@@ -285,7 +290,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 14,
         paddingVertical: 13,
         borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: '#E8ECF1',
+        borderBottomColor: BORDER,
     },
 
     rowLast: {
@@ -298,13 +303,13 @@ const styles = StyleSheet.create({
         paddingHorizontal: 14,
         paddingVertical: 13,
         borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: '#E8ECF1',
+        borderBottomColor: BORDER,
     },
 
     rowIcon: {
         width: 38,
         height: 38,
-        borderRadius: 19,
+        borderRadius: 12,
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 12,
@@ -315,21 +320,22 @@ const styles = StyleSheet.create({
     },
 
     rowLabel: {
+        fontFamily: 'Poppins_500Medium',
         fontSize: 14,
-        fontWeight: '600',
-        color: '#12263A',
+        color: TEXT_DARK,
     },
 
     rowHint: {
         marginTop: 1,
-        fontSize: 12,
-        color: '#7A8492',
+        fontFamily: 'Poppins_400Regular',
+        fontSize: 11,
+        color: TEXT_MUTED,
     },
 
     infoCard: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#E9F9EF',
+        backgroundColor: GREEN_TINT,
         borderRadius: 12,
         padding: 14,
     },
@@ -337,8 +343,9 @@ const styles = StyleSheet.create({
     infoText: {
         flex: 1,
         marginLeft: 10,
+        fontFamily: 'Poppins_400Regular',
         fontSize: 12,
-        color: '#16A34A',
+        color: GREEN,
         lineHeight: 18,
     },
 

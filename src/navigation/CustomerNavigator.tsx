@@ -7,6 +7,7 @@ import OrderDetailsScreen from '../screens/Customer/OrderDetailsScreen';
 import AdressesScreen from '../screens/Customer/AdressesScreen';
 import SettingsScreen from '../screens/Customer/SettingsScreen';
 import SupportScreen from '../screens/Customer/SupportScreen';
+import ChatScreen from '../components/ChatScreen';
 import { OrdersProvider } from '../context/OrdersContext';
 import type { CustomerStackParamList } from './types';
 
@@ -27,6 +28,7 @@ export default function CustomerNavigator() {
         <Stack.Screen name="Addresses" component={AdressesScreen} />
         <Stack.Screen name="Settings" component={SettingsScreen} />
         <Stack.Screen name="Support" component={SupportScreen} />
+        <Stack.Screen name="Chat" component={ChatScreen} />
       </Stack.Navigator>
     </OrdersProvider>
   );

@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -12,6 +12,8 @@ import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Role'>;
+
+const isWeb = Platform.OS === 'web';
 
 type RoleOption = {
   role: Role;
@@ -158,6 +160,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 10,
     paddingBottom: 16,
+    ...(isWeb ? {
+      maxWidth: 520,
+      alignSelf: 'center',
+      width: '100%',
+    } : {}),
   },
   decorGlowOne: {
     position: 'absolute',

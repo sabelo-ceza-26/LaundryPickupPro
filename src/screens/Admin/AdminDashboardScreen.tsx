@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import {
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -26,8 +27,12 @@ import type {
   AdminOrderStatus,
 } from '../../context/AdminContext';
 import { getOrderTotal } from '../../context/AdminContext';
+import { useDriverOrders } from '../../context/DriverOrdersContext';
+import type { Order } from '../../navigation/DriverNavigator';
 import AdminOrderDetailModal from '../../components/AdminOrderDetailModal';
+import FancyAlert from '../../components/FancyAlert';
 import { formatMoney } from '../../utils/format';
+import { computeReportStats } from '../../services/reportsService';
 
 type Props = NativeStackScreenProps<
   AdminStackParamList,
@@ -42,6 +47,8 @@ const PURPLE = '#7857FF';
 const AMBER = '#F4A928';
 const GREEN = '#00B887';
 const TEAL = '#0E9AA7';
+
+const isWeb = Platform.OS === 'web';
 
 const GRADIENT_HEADER = [BLUE, PURPLE] as const;
 
@@ -74,9 +81,11 @@ const STATUS_META: Record<
 
 export default function AdminDashboardScreen({ navigation }: Props) {
   const { user } = useAuth();
-  const { orders, drivers, updateOrderStatus } = useAdmin();
+  const { orders, drivers, updateOrderStatus, assignDriver } = useAdmin();
+  const { addOrder: addDriverOrder } = useDriverOrders();
   const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
   const [showDetail, setShowDetail] = useState(false);
+  const [showNoPickups, setShowNoPickups] = useState(false);
   const [fontsLoaded] = useFonts({
     Poppins_400Regular,
     Poppins_500Medium,
@@ -84,13 +93,42 @@ export default function AdminDashboardScreen({ navigation }: Props) {
     Poppins_700Bold,
   });
 
-  const stats = useMemo<Stat[]>(() => {
-    const totalRevenue = orders.reduce(
-      (sum, order) => sum + getOrderTotal(order),
-      0
+  const handleAssignDriver = (orderId: string, driverName: string, driverPhone: string) => {
+    assignDriver(orderId, driverName, driverPhone);
+
+    const adminOrder = orders.find((o) => o.id === orderId);
+    if (adminOrder) {
+      const driverOrder: Order = {
+        id: Date.now(),
+        orderNumber: adminOrder.id,
+        type: 'Pickup',
+        customer: adminOrder.customerName,
+        phone: adminOrder.customerPhone,
+        address: adminOrder.pickupAddress,
+        time: adminOrder.pickupTime,
+        status: 'Assigned',
+        driver: driverName,
+        notes: adminOrder.instructions || undefined,
+      };
+      addDriverOrder(driverOrder);
+    }
+
+    setSelectedOrder((current) =>
+      current
+        ? {
+            ...current,
+            driver: driverName,
+            driverPhone,
+            status:
+              current.status === 'Pending' ? 'In Progress' : current.status,
+          }
+        : current
     );
-    const pending = orders.filter((o) => o.status === 'Pending').length;
-    const inProgress = orders.filter((o) => o.status === 'In Progress').length;
+  };
+
+  const stats = useMemo<Stat[]>(() => {
+    const { totalRevenue } = computeReportStats(orders);
+    const unassigned = orders.filter((o) => !(o.driver ?? '').trim()).length;
 
     return [
       {
@@ -111,10 +149,17 @@ export default function AdminDashboardScreen({ navigation }: Props) {
       },
       {
         label: 'Pending Pickups',
-        value: String(pending),
+        value: String(unassigned),
         icon: 'package-variant-closed',
         tint: '#FFF0B8',
         color: AMBER,
+        onPress: () => {
+          if (unassigned > 0) {
+            navigation.navigate('Orders', { filter: 'Unassigned' });
+          } else {
+            setShowNoPickups(true);
+          }
+        },
       },
       {
         label: 'Total Revenue',
@@ -278,6 +323,17 @@ export default function AdminDashboardScreen({ navigation }: Props) {
             );
           }
         }}
+        onAssignDriver={handleAssignDriver}
+      />
+
+      <FancyAlert
+        visible={showNoPickups}
+        icon="package-variant-closed"
+        iconColor="#E19A00"
+        iconBackground="#FFF0B8"
+        title="No pending pickups"
+        message="There are no unassigned orders right now. "
+        onClose={() => setShowNoPickups(false)}
       />
     </SafeAreaView>
   );
@@ -352,8 +408,9 @@ const styles = StyleSheet.create({
     color: WHITE,
   },
   content: {
-    paddingHorizontal: 20,
+    paddingHorizontal: isWeb ? 32 : 20,
     marginTop: 18,
+    ...(isWeb ? { maxWidth: 800, alignSelf: 'center', width: '100%' } : {}),
   },
   statsGrid: {
     flexDirection: 'row',
@@ -362,7 +419,7 @@ const styles = StyleSheet.create({
     marginBottom: 22,
   },
   statCard: {
-    width: '48%',
+    width: isWeb ? '23%' : '48%',
     backgroundColor: WHITE,
     borderRadius: 18,
     borderWidth: 1,

@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import {
   FlatList,
+  Platform,
   StyleSheet,
   Text,
   TextInput,
@@ -106,6 +107,8 @@ function OrderCard({ order, onPress }: OrderCardProps) {
   );
 }
 
+const isWeb = Platform.OS === 'web';
+
 export default function OrderHistoryScreen() {
   const { orders } = useOrders();
   const navigation = useNavigation<CustomerTabNavigation>();
@@ -138,6 +141,12 @@ export default function OrderHistoryScreen() {
       <LinearGradient colors={GRADIENT_VIBRANT} style={styles.headerBanner}>
         <View style={styles.shine} />
         <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.headerBack}
+            onPress={() => navigation.goBack()}
+          >
+            <MaterialCommunityIcons name="arrow-left" size={22} color={WHITE} />
+          </TouchableOpacity>
           <Text style={styles.headerTitle}>My Orders</Text>
           <TouchableOpacity
             style={styles.headerIcon}
@@ -256,6 +265,14 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 18,
   },
+  headerBack: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   headerTitle: {
     fontFamily: 'Poppins_700Bold',
     fontSize: 24,
@@ -278,13 +295,14 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingHorizontal: 10,
     height: 50,
-    marginHorizontal: 20,
+    marginHorizontal: isWeb ? 32 : 20,
     marginBottom: 14,
     elevation: 2,
     shadowColor: '#26384A',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
+    ...(isWeb ? { maxWidth: 600, alignSelf: 'center', width: '100%' } : {}),
   },
   searchIconChip: {
     width: 30,
@@ -303,8 +321,9 @@ const styles = StyleSheet.create({
   },
   filterRow: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
+    paddingHorizontal: isWeb ? 32 : 20,
     marginBottom: 6,
+    ...(isWeb ? { maxWidth: 600, alignSelf: 'center', width: '100%' } : {}),
   },
   filterChip: {
     borderRadius: 20,
@@ -337,10 +356,11 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
   },
   listContent: {
-    paddingHorizontal: 20,
+    paddingHorizontal: isWeb ? 32 : 20,
     paddingTop: 12,
     paddingBottom: 110,
     flexGrow: 1,
+    ...(isWeb ? { maxWidth: 600, alignSelf: 'center', width: '100%' } : {}),
   },
   card: {
     flexDirection: 'row',

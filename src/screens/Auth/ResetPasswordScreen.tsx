@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   Alert,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -19,6 +20,8 @@ import { typography } from '../../theme/typography';
 import { isMinLength, isRequired, matches } from '../../utils/validation';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Reset'>;
+
+const isWeb = Platform.OS === 'web';
 
 export default function ResetPasswordScreen({ navigation, route }: Props) {
   const { email, role } = route.params;
@@ -133,6 +136,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 12,
     paddingBottom: 30,
+    ...(isWeb ? {
+      maxWidth: 480,
+      alignSelf: 'center',
+      width: '100%',
+    } : {}),
   },
   backButton: {
     width: 44,

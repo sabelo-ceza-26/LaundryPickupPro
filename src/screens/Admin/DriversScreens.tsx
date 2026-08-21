@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -25,7 +26,7 @@ import type { AdminStackParamList } from '../../navigation/AdminNavigator';
 import { useAdmin } from '../../context/AdminContext';
 import type { AdminDriver } from '../../context/AdminContext';
 import FancyAlert from '../../components/FancyAlert';
-import { isPhone, isRequired } from '../../utils/validation';
+import { isEmail, isPhone, isRequired } from '../../utils/validation';
 
 type Props = NativeStackScreenProps<AdminStackParamList, 'Drivers'>;
 
@@ -33,8 +34,6 @@ const BLUE = '#2E6BFF';
 const BLUE_TINT = '#E4EEFF';
 const PURPLE = '#7857FF';
 const PURPLE_TINT = '#EFEBFF';
-const TEAL = '#0E9AA7';
-const TEAL_TINT = '#D6F0F4';
 const GREEN = '#00A85A';
 const GREEN_TINT = '#DDF8E8';
 const AMBER = '#E8960C';
@@ -81,6 +80,8 @@ type FormModalProps = {
   onClose: () => void;
   onSave: (draft: {
     name: string;
+    email: string;
+    password: string;
     phone: string;
     vehicle: string;
     registration: string;
@@ -95,6 +96,8 @@ function DriverFormModal({
   onSave,
 }: FormModalProps) {
   const [name, setName] = useState(driver?.name ?? '');
+  const [email, setEmail] = useState(driver?.email ?? '');
+  const [password, setPassword] = useState(driver?.password ?? '');
   const [phone, setPhone] = useState(driver?.phone ?? '');
   const [vehicle, setVehicle] = useState(driver?.vehicle ?? '');
   const [registration, setRegistration] = useState(driver?.registration ?? '');
@@ -103,6 +106,8 @@ function DriverFormModal({
 
   const handleOpen = () => {
     setName(driver?.name ?? '');
+    setEmail(driver?.email ?? '');
+    setPassword(driver?.password ?? '');
     setPhone(driver?.phone ?? '');
     setVehicle(driver?.vehicle ?? '');
     setRegistration(driver?.registration ?? '');
@@ -113,6 +118,10 @@ function DriverFormModal({
   const handleSave = () => {
     const next: Record<string, string> = {};
     if (!isRequired(name)) next.name = 'Enter the driver name';
+    if (!isRequired(email)) next.email = 'Email is required';
+    else if (!isEmail(email)) next.email = 'Enter a valid email address';
+    if (!isRequired(password)) next.password = 'Password is required';
+    else if (password.length < 8) next.password = 'Password must be at least 8 characters';
     if (!isPhone(phone)) next.phone = 'Enter a valid phone number';
     if (!isRequired(vehicle)) next.vehicle = 'Enter the vehicle';
     if (!isRequired(registration)) next.registration = 'Enter the number plate';
@@ -121,6 +130,8 @@ function DriverFormModal({
 
     onSave({
       name: name.trim(),
+      email: email.trim().toLowerCase(),
+      password: password.trim(),
       phone: phone.trim(),
       vehicle: vehicle.trim(),
       registration: registration.trim().toUpperCase(),
@@ -169,6 +180,36 @@ function DriverFormModal({
             />
           </View>
           {errors.name && <Text style={styles.formErrorText}>{errors.name}</Text>}
+
+          <Text style={styles.formLabel}>Email (for login)</Text>
+          <View style={[styles.formInputField, errors.email && styles.formInputError]}>
+            <MaterialCommunityIcons name="email-outline" size={18} color={TEXT_MUTED} />
+            <TextInput
+              style={styles.formInput}
+              value={email}
+              onChangeText={setEmail}
+              placeholder="driver@email.com"
+              placeholderTextColor={TEXT_MUTED}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </View>
+          {errors.email && <Text style={styles.formErrorText}>{errors.email}</Text>}
+
+          <Text style={styles.formLabel}>Password (for login)</Text>
+          <View style={[styles.formInputField, errors.password && styles.formInputError]}>
+            <MaterialCommunityIcons name="lock-outline" size={18} color={TEXT_MUTED} />
+            <TextInput
+              style={styles.formInput}
+              value={password}
+              onChangeText={setPassword}
+              placeholder="Min. 8 characters"
+              placeholderTextColor={TEXT_MUTED}
+              secureTextEntry
+            />
+          </View>
+          {errors.password && <Text style={styles.formErrorText}>{errors.password}</Text>}
 
           <Text style={styles.formLabel}>Phone number</Text>
           <View style={[styles.formInputField, errors.phone && styles.formInputError]}>
@@ -260,6 +301,54 @@ type DetailModalProps = {
   onDelete: () => void;
 };
 
+function DetailSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <View style={styles.detailSection}>
+      <Text style={styles.detailSectionTitle}>{title}</Text>
+      <View style={styles.detailSectionCard}>{children}</View>
+    </View>
+  );
+}
+
+type DetailRowProps = {
+  icon: React.ComponentProps<typeof MaterialCommunityIcons>['name'];
+  tint: string;
+  color: string;
+  label: string;
+  value: string;
+  trailing?: React.ReactNode;
+  last?: boolean;
+};
+
+function DetailRow({
+  icon,
+  tint,
+  color,
+  label,
+  value,
+  trailing,
+  last,
+}: DetailRowProps) {
+  return (
+    <View style={[styles.detailInfoRow, last && styles.detailInfoRowLast]}>
+      <View style={[styles.detailInfoIcon, { backgroundColor: tint }]}>
+        <MaterialCommunityIcons name={icon} size={17} color={color} />
+      </View>
+      <View style={styles.detailInfoBody}>
+        <Text style={styles.detailInfoLabel}>{label}</Text>
+        <Text style={styles.detailInfoValue}>{value}</Text>
+      </View>
+      {trailing}
+    </View>
+  );
+}
+
 function DriverDetailModal({
   visible,
   driver,
@@ -267,6 +356,12 @@ function DriverDetailModal({
   onEdit,
   onDelete,
 }: DetailModalProps) {
+  const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    if (visible) setShowPassword(false);
+  }, [visible, driver?.id]);
+
   if (!driver) return null;
 
   return (
@@ -282,66 +377,101 @@ function DriverDetailModal({
             <MaterialCommunityIcons name="close" size={20} color={TEXT_MUTED} />
           </TouchableOpacity>
 
-          <View
-            style={[
-              styles.detailAvatar,
-              { backgroundColor: driver.badgeColor },
-            ]}
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.detailBody}
           >
-            <Text style={[styles.detailAvatarText, { color: driver.initialsColor }]}>
-              {driver.initials}
-            </Text>
-          </View>
-          <Text style={styles.detailName}>{driver.name}</Text>
-          <Text style={styles.detailJoined}>{driver.joinedDate}</Text>
+            <View
+              style={[
+                styles.detailAvatar,
+                { backgroundColor: driver.badgeColor },
+              ]}
+            >
+              <Text style={[styles.detailAvatarText, { color: driver.initialsColor }]}>
+                {driver.initials}
+              </Text>
+            </View>
+            <Text style={styles.detailName}>{driver.name}</Text>
+            <View style={styles.detailJoinedPill}>
+              <MaterialCommunityIcons name="calendar-check-outline" size={12} color={BLUE} />
+              <Text style={styles.detailJoinedPillText}>{driver.joinedDate}</Text>
+            </View>
 
-          <View style={styles.detailInfoCard}>
-            <View style={styles.detailInfoRow}>
-              <View style={[styles.detailInfoIcon, { backgroundColor: BLUE_TINT }]}>
-                <MaterialCommunityIcons name="phone-outline" size={17} color={BLUE} />
-              </View>
-              <View style={styles.detailInfoBody}>
-                <Text style={styles.detailInfoLabel}>Phone</Text>
-                <Text style={styles.detailInfoValue}>{driver.phone}</Text>
-              </View>
-            </View>
-            <View style={styles.detailInfoRow}>
-              <View style={[styles.detailInfoIcon, { backgroundColor: GREEN_TINT }]}>
-                <MaterialCommunityIcons name="car-outline" size={17} color={GREEN} />
-              </View>
-              <View style={styles.detailInfoBody}>
-                <Text style={styles.detailInfoLabel}>Vehicle</Text>
-                <Text style={styles.detailInfoValue}>{driver.vehicle}</Text>
-              </View>
-            </View>
-            <View style={styles.detailInfoRow}>
-              <View style={[styles.detailInfoIcon, { backgroundColor: AMBER_TINT }]}>
-                <MaterialCommunityIcons name="credit-card-scan-outline" size={17} color={AMBER} />
-              </View>
-              <View style={styles.detailInfoBody}>
-                <Text style={styles.detailInfoLabel}>Number plate</Text>
-                <Text style={styles.detailInfoValue}>{driver.registration}</Text>
-              </View>
-            </View>
-            <View style={styles.detailInfoRow}>
-              <View style={[styles.detailInfoIcon, { backgroundColor: PURPLE_TINT }]}>
-                <MaterialCommunityIcons name="map-marker-radius-outline" size={17} color={PURPLE} />
-              </View>
-              <View style={styles.detailInfoBody}>
-                <Text style={styles.detailInfoLabel}>Service area</Text>
-                <Text style={styles.detailInfoValue}>{driver.area}</Text>
-              </View>
-            </View>
-            <View style={styles.detailInfoRow}>
-              <View style={[styles.detailInfoIcon, { backgroundColor: TEAL_TINT }]}>
-                <MaterialCommunityIcons name="truck-outline" size={17} color={TEAL} />
-              </View>
-              <View style={styles.detailInfoBody}>
-                <Text style={styles.detailInfoLabel}>Trips</Text>
-                <Text style={styles.detailInfoValue}>{driver.totalTrips} trips completed</Text>
-              </View>
-            </View>
-          </View>
+            <DetailSection title="Login details">
+              <DetailRow
+                icon="email-outline"
+                tint={PURPLE_TINT}
+                color={PURPLE}
+                label="Email"
+                value={driver.email}
+              />
+              <DetailRow
+                icon="lock-outline"
+                tint="#FDE7E8"
+                color={DANGER}
+                label="Password"
+                value={
+                  showPassword
+                    ? driver.password
+                    : '\u2022'.repeat(driver.password.length)
+                }
+                last
+                trailing={
+                  <TouchableOpacity
+                    style={styles.eyeButton}
+                    activeOpacity={0.7}
+                    onPress={() => setShowPassword((prev) => !prev)}
+                  >
+                    <MaterialCommunityIcons
+                      name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={19}
+                      color={TEXT_MUTED}
+                    />
+                  </TouchableOpacity>
+                }
+              />
+            </DetailSection>
+
+            <DetailSection title="Contact">
+              <DetailRow
+                icon="phone-outline"
+                tint={BLUE_TINT}
+                color={BLUE}
+                label="Phone"
+                value={driver.phone}
+                last
+              />
+            </DetailSection>
+
+            <DetailSection title="Vehicle">
+              <DetailRow
+                icon="car-outline"
+                tint={GREEN_TINT}
+                color={GREEN}
+                label="Vehicle"
+                value={driver.vehicle}
+              />
+              <DetailRow
+                icon="credit-card-scan-outline"
+                tint={AMBER_TINT}
+                color={AMBER}
+                label="Number plate"
+                value={driver.registration}
+                last
+              />
+            </DetailSection>
+
+            <DetailSection title="Service area">
+              <DetailRow
+                icon="map-marker-radius-outline"
+                tint={PURPLE_TINT}
+                color={PURPLE}
+                label="Area"
+                value={driver.area}
+                last
+              />
+            </DetailSection>
+          </ScrollView>
 
           <View style={styles.detailActions}>
             <TouchableOpacity style={styles.detailEditButton} activeOpacity={0.9} onPress={onEdit}>
@@ -362,6 +492,8 @@ function DriverDetailModal({
     </Modal>
   );
 }
+
+const isWeb = Platform.OS === 'web';
 
 export default function DriversScreen({ navigation }: Props) {
   const { drivers, addDriver, updateDriver, deleteDriver } = useAdmin();
@@ -394,6 +526,7 @@ export default function DriversScreen({ navigation }: Props) {
     return drivers.filter((driver) => {
       return (
         driver.name.toLowerCase().includes(normalizedSearch) ||
+        driver.email.toLowerCase().includes(normalizedSearch) ||
         driver.vehicle.toLowerCase().includes(normalizedSearch) ||
         driver.area.toLowerCase().includes(normalizedSearch) ||
         driver.phone.toLowerCase().includes(normalizedSearch)
@@ -416,6 +549,8 @@ export default function DriversScreen({ navigation }: Props) {
 
   const handleSave = (draft: {
     name: string;
+    email: string;
+    password: string;
     phone: string;
     vehicle: string;
     registration: string;
@@ -424,6 +559,8 @@ export default function DriversScreen({ navigation }: Props) {
     if (formDriver) {
       updateDriver(formDriver.id, {
         name: draft.name,
+        email: draft.email,
+        password: draft.password,
         phone: draft.phone,
         vehicle: draft.vehicle,
         registration: draft.registration,
@@ -443,11 +580,12 @@ export default function DriversScreen({ navigation }: Props) {
         id: `d${Date.now()}`,
         initials: initialsFor(draft.name),
         name: draft.name,
+        email: draft.email,
+        password: draft.password,
         phone: draft.phone,
         vehicle: draft.vehicle,
         registration: draft.registration,
         area: draft.area,
-        totalTrips: 0,
         joinedDate: joinedStamp(),
         badgeColor: palette.badgeColor,
         initialsColor: palette.initialsColor,
@@ -492,15 +630,28 @@ export default function DriversScreen({ navigation }: Props) {
 
       <View style={styles.driverDetails}>
         <Text style={styles.driverName}>{item.name}</Text>
+        <Text
+          style={styles.driverEmail}
+          numberOfLines={1}
+          ellipsizeMode="middle"
+        >
+          {item.email}
+        </Text>
         <View style={styles.vehicleRow}>
           <MaterialCommunityIcons name="car-outline" size={12} color={TEXT_MUTED} />
           <Text style={styles.vehicleText}>{item.vehicle}</Text>
         </View>
       </View>
 
-      <View style={styles.tripDetails}>
-        <Text style={styles.totalTrips}>{item.totalTrips} Trips</Text>
-        <Text style={styles.areaText}>{item.area}</Text>
+      <View style={[styles.areaPill, { backgroundColor: item.badgeColor }]}>
+        <MaterialCommunityIcons
+          name="map-marker-radius-outline"
+          size={12}
+          color={item.initialsColor}
+        />
+        <Text style={[styles.areaPillText, { color: item.initialsColor }]}>
+          {item.area}
+        </Text>
       </View>
 
       <MaterialCommunityIcons name="chevron-right" size={20} color={TEXT_MUTED} />
@@ -677,8 +828,9 @@ const styles = StyleSheet.create({
     color: WHITE,
   },
   listContent: {
-    paddingHorizontal: 20,
+    paddingHorizontal: isWeb ? 32 : 20,
     paddingBottom: 40,
+    ...(isWeb ? { maxWidth: 700, alignSelf: 'center', width: '100%' } : {}),
   },
   searchWrap: {
     flexDirection: 'row',
@@ -752,6 +904,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: TEXT_DARK,
   },
+  driverEmail: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 11,
+    color: TEXT_MUTED,
+    marginTop: 1,
+  },
   vehicleRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -763,20 +921,18 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: TEXT_MUTED,
   },
-  tripDetails: {
-    alignItems: 'flex-end',
+  areaPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
     marginRight: 10,
   },
-  totalTrips: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 12,
-    color: PURPLE,
-  },
-  areaText: {
-    marginTop: 4,
-    fontFamily: 'Poppins_400Regular',
-    fontSize: 9,
-    color: TEXT_MUTED,
+  areaPillText: {
+    fontFamily: 'Poppins_500Medium',
+    fontSize: 10,
+    marginLeft: 3,
   },
   empty: {
     alignItems: 'center',
@@ -947,15 +1103,19 @@ const styles = StyleSheet.create({
   detailCard: {
     width: '100%',
     maxWidth: 360,
+    maxHeight: '86%',
     backgroundColor: WHITE,
     borderRadius: 24,
-    paddingHorizontal: 22,
-    paddingVertical: 24,
-    alignItems: 'center',
+    overflow: 'hidden',
+    elevation: 12,
+    shadowColor: '#12263A',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.28,
+    shadowRadius: 24,
   },
   detailClose: {
     position: 'absolute',
-    top: 14,
+    top: 12,
     right: 14,
     width: 32,
     height: 32,
@@ -963,6 +1123,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#F3F6F9',
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 1,
+  },
+  detailBody: {
+    alignItems: 'center',
+    paddingTop: 22,
+    paddingHorizontal: 18,
+    paddingBottom: 8,
   },
   detailAvatar: {
     width: 72,
@@ -970,7 +1137,6 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
   },
   detailAvatarText: {
     fontFamily: 'Poppins_700Bold',
@@ -980,29 +1146,52 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 18,
     color: TEXT_DARK,
+    marginTop: 10,
   },
-  detailJoined: {
-    fontFamily: 'Poppins_400Regular',
-    fontSize: 12,
-    color: TEXT_MUTED,
-    marginTop: 2,
+  detailJoinedPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: BLUE_TINT,
+    borderRadius: 999,
+    paddingHorizontal: 11,
+    paddingVertical: 5,
+    marginTop: 6,
   },
-  detailInfoCard: {
+  detailJoinedPillText: {
+    fontFamily: 'Poppins_500Medium',
+    fontSize: 11,
+    color: BLUE,
+    marginLeft: 5,
+  },
+  detailSection: {
     alignSelf: 'stretch',
-    backgroundColor: '#F9FAFC',
-    borderRadius: 16,
+    marginTop: 16,
+  },
+  detailSectionTitle: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 11,
+    color: TEXT_MUTED,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    marginBottom: 8,
+  },
+  detailSectionCard: {
     borderWidth: 1,
     borderColor: BORDER,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    marginTop: 16,
+    borderRadius: 14,
+    backgroundColor: '#FBFCFE',
+    paddingHorizontal: 12,
+    paddingVertical: 3,
   },
   detailInfoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 9,
     borderBottomWidth: 1,
     borderBottomColor: '#EEF1F5',
+  },
+  detailInfoRowLast: {
+    borderBottomWidth: 0,
   },
   detailInfoIcon: {
     width: 34,
@@ -1014,6 +1203,14 @@ const styles = StyleSheet.create({
   },
   detailInfoBody: {
     flex: 1,
+  },
+  eyeButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 11,
+    backgroundColor: '#F3F6F9',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   detailInfoLabel: {
     fontFamily: 'Poppins_400Regular',
@@ -1029,7 +1226,9 @@ const styles = StyleSheet.create({
   detailActions: {
     flexDirection: 'row',
     alignSelf: 'stretch',
-    marginTop: 18,
+    paddingHorizontal: 18,
+    paddingTop: 14,
+    paddingBottom: 20,
   },
   detailEditButton: {
     flex: 1,

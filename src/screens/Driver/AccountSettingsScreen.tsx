@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+    Platform,
     ScrollView,
     StyleSheet,
     Text,
@@ -8,12 +9,36 @@ import {
     View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import {
+    useFonts,
+    Poppins_400Regular,
+    Poppins_500Medium,
+    Poppins_600SemiBold,
+    Poppins_700Bold,
+} from '@expo-google-fonts/poppins';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import type { DriverStackParamList } from '../../navigation/DriverNavigator';
 import { useAuth } from '../../hooks/useAuth';
 import { isEmail, isPhone, isRequired } from '../../utils/validation';
+import BookingHeader from '../../components/BookingHeader';
+
+const TEXT_DARK = '#1F2933';
+const TEXT_MUTED = '#7A869A';
+const WHITE = '#FFFFFF';
+const BLUE = '#2E6BFF';
+const BLUE_TINT = '#E4EEFF';
+const PURPLE = '#7857FF';
+const PURPLE_TINT = '#EFEBFF';
+const BORDER = '#E8ECF1';
+const DANGER = '#E5484D';
+const TEAL_HEADING = '#0E7A86';
+
+const GRADIENT_PRIMARY = [BLUE, PURPLE] as const;
+
+const isWeb = Platform.OS === 'web';
 
 type Props = NativeStackScreenProps<
     DriverStackParamList,
@@ -25,17 +50,28 @@ export default function AccountSettingsScreen({
 }: Props) {
     const { user, updateUser } = useAuth();
 
+    const [fontsLoaded] = useFonts({
+        Poppins_400Regular,
+        Poppins_500Medium,
+        Poppins_600SemiBold,
+        Poppins_700Bold,
+    });
+
     const [name, setName] = useState(user?.name ?? '');
     const [email, setEmail] = useState(user?.email ?? '');
     const [phone, setPhone] = useState(user?.phone ?? '');
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [saved, setSaved] = useState(false);
 
+    if (!fontsLoaded) return null;
+
     const saveProfile = () => {
         const next: Record<string, string> = {};
         if (!isRequired(name)) next.name = 'Enter your full name';
         if (!isEmail(email)) next.email = 'Enter a valid email address';
-        if (phone.trim() && !isPhone(phone)) {
+        if (!isRequired(phone)) {
+            next.phone = 'Enter your phone number';
+        } else if (!isPhone(phone)) {
             next.phone = 'Enter a valid phone number';
         }
         setErrors(next);
@@ -44,7 +80,7 @@ export default function AccountSettingsScreen({
         updateUser({
             name: name.trim(),
             email: email.trim(),
-            phone: phone.trim() || undefined,
+            phone: phone.trim(),
         });
 
         setSaved(true);
@@ -53,22 +89,16 @@ export default function AccountSettingsScreen({
 
     return (
         <SafeAreaView style={styles.safeArea}>
-            <ScrollView contentContainerStyle={styles.container}>
-
-                {/* Header */}
-                <View style={styles.header}>
-                    <TouchableOpacity onPress={() => navigation.goBack()}>
-                        <Ionicons
-                            name="chevron-back"
-                            size={28}
-                            color="#12263A"
-                        />
-                    </TouchableOpacity>
-                    <Text style={styles.title}>
-                        Account Settings
-                    </Text>
-                    <View style={{ width: 28 }} />
-                </View>
+            <ScrollView
+                style={styles.scroll}
+                contentContainerStyle={styles.container}
+                showsVerticalScrollIndicator={false}
+            >
+                <BookingHeader
+                    title="Account Settings"
+                    onBack={() => navigation.goBack()}
+                    showCancelBooking={false}
+                />
 
                 {/* Profile Card */}
                 <View style={styles.profileCard}>
@@ -84,6 +114,16 @@ export default function AccountSettingsScreen({
                         <Text style={styles.profileEmail} numberOfLines={1}>
                             {email.trim() || 'driver@laundrypickuppro.app'}
                         </Text>
+                        <View style={styles.profilePhoneRow}>
+                            <MaterialCommunityIcons
+                                name="phone-outline"
+                                size={13}
+                                color={TEXT_MUTED}
+                            />
+                            <Text style={styles.profilePhone}>
+                                {phone.trim() || 'No phone number'}
+                            </Text>
+                        </View>
                     </View>
                 </View>
 
@@ -97,13 +137,13 @@ export default function AccountSettingsScreen({
                         Full name
                     </Text>
                     <View style={[styles.inputField, errors.name && styles.inputError]}>
-                        <Ionicons name="person-outline" size={18} color="#7A8492" />
+                        <MaterialCommunityIcons name="account-outline" size={18} color={TEXT_MUTED} />
                         <TextInput
                             style={styles.input}
                             value={name}
                             onChangeText={setName}
                             placeholder="Your full name"
-                            placeholderTextColor="#B9BEC7"
+                            placeholderTextColor={TEXT_MUTED}
                             autoCapitalize="words"
                         />
                     </View>
@@ -115,13 +155,13 @@ export default function AccountSettingsScreen({
                         Email address
                     </Text>
                     <View style={[styles.inputField, errors.email && styles.inputError]}>
-                        <Ionicons name="mail-outline" size={18} color="#7A8492" />
+                        <MaterialCommunityIcons name="email-outline" size={18} color={TEXT_MUTED} />
                         <TextInput
                             style={styles.input}
                             value={email}
                             onChangeText={setEmail}
                             placeholder="you@example.com"
-                            placeholderTextColor="#B9BEC7"
+                            placeholderTextColor={TEXT_MUTED}
                             autoCapitalize="none"
                             keyboardType="email-address"
                         />
@@ -134,13 +174,13 @@ export default function AccountSettingsScreen({
                         Phone number
                     </Text>
                     <View style={[styles.inputField, errors.phone && styles.inputError]}>
-                        <Ionicons name="call-outline" size={18} color="#7A8492" />
+                        <MaterialCommunityIcons name="phone-outline" size={18} color={TEXT_MUTED} />
                         <TextInput
                             style={styles.input}
                             value={phone}
                             onChangeText={setPhone}
-                            placeholder="Optional"
-                            placeholderTextColor="#B9BEC7"
+                            placeholder="Enter your phone number"
+                            placeholderTextColor={TEXT_MUTED}
                             keyboardType="phone-pad"
                         />
                     </View>
@@ -149,12 +189,15 @@ export default function AccountSettingsScreen({
                     )}
 
                     <TouchableOpacity
-                        style={styles.saveButton}
+                        style={styles.saveTouch}
+                        activeOpacity={0.9}
                         onPress={saveProfile}
                     >
-                        <Text style={styles.saveButtonText}>
-                            {saved ? 'Saved' : 'Save changes'}
-                        </Text>
+                        <LinearGradient colors={GRADIENT_PRIMARY} style={styles.saveButton}>
+                            <Text style={styles.saveButtonText}>
+                                {saved ? 'Saved' : 'Save changes'}
+                            </Text>
+                        </LinearGradient>
                     </TouchableOpacity>
                 </View>
 
@@ -170,11 +213,11 @@ export default function AccountSettingsScreen({
                             navigation.navigate('ChangePassword')
                         }
                     >
-                        <View style={[styles.rowIcon, { backgroundColor: '#E8EFFD' }]}>
-                            <Ionicons
+                        <View style={[styles.rowIcon, { backgroundColor: BLUE_TINT }]}>
+                            <MaterialCommunityIcons
                                 name="key-outline"
                                 size={20}
-                                color="#173D8F"
+                                color={BLUE}
                             />
                         </View>
                         <View style={styles.rowBody}>
@@ -185,10 +228,10 @@ export default function AccountSettingsScreen({
                                 Keep your account secure
                             </Text>
                         </View>
-                        <Ionicons
-                            name="chevron-forward"
+                        <MaterialCommunityIcons
+                            name="chevron-right"
                             size={20}
-                            color="#B9BEC7"
+                            color={TEXT_MUTED}
                         />
                     </TouchableOpacity>
                 </View>
@@ -202,55 +245,50 @@ const styles = StyleSheet.create({
 
     safeArea: {
         flex: 1,
+        backgroundColor: WHITE,
+    },
+
+    scroll: {
         backgroundColor: '#F5F7FA',
     },
 
     container: {
-        padding: 20,
+        paddingHorizontal: isWeb ? 32 : 20,
+        paddingTop: 16,
         paddingBottom: 30,
-    },
-
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 20,
-    },
-
-    title: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: '#12263A',
+        ...(isWeb ? { maxWidth: 600, alignSelf: 'center', width: '100%' } : {}),
     },
 
     profileCard: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 14,
-        padding: 16,
+        backgroundColor: WHITE,
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: BORDER,
         flexDirection: 'row',
         alignItems: 'center',
+        padding: 16,
+        marginBottom: 22,
         elevation: 2,
-        shadowColor: '#000000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 4,
-        marginBottom: 20,
+        shadowColor: TEXT_DARK,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 12,
     },
 
     avatar: {
         width: 56,
         height: 56,
         borderRadius: 28,
-        backgroundColor: '#173D8F',
+        backgroundColor: BLUE,
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 14,
     },
 
     avatarText: {
-        color: '#FFFFFF',
+        fontFamily: 'Poppins_700Bold',
         fontSize: 22,
-        fontWeight: '700',
+        color: WHITE,
     },
 
     profileInfo: {
@@ -258,86 +296,113 @@ const styles = StyleSheet.create({
     },
 
     profileName: {
+        fontFamily: 'Poppins_600SemiBold',
         fontSize: 17,
-        fontWeight: '700',
-        color: '#12263A',
+        color: TEXT_DARK,
     },
 
     profileEmail: {
+        fontFamily: 'Poppins_400Regular',
         marginTop: 2,
         fontSize: 13,
-        color: '#7A8492',
+        color: TEXT_MUTED,
+    },
+
+    profilePhoneRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 3,
+    },
+
+    profilePhone: {
+        fontFamily: 'Poppins_400Regular',
+        fontSize: 13,
+        color: TEXT_MUTED,
+        marginLeft: 4,
     },
 
     sectionTitle: {
+        fontFamily: 'Poppins_600SemiBold',
         fontSize: 15,
-        fontWeight: '700',
-        color: '#12263A',
+        color: TEAL_HEADING,
         marginBottom: 10,
     },
 
     card: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 14,
-        padding: 16,
-        marginBottom: 20,
-        elevation: 2,
-        shadowColor: '#000000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 4,
+        backgroundColor: WHITE,
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: BORDER,
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        marginBottom: 16,
+        elevation: 1,
+        shadowColor: '#26384A',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
     },
 
     label: {
+        fontFamily: 'Poppins_500Medium',
         fontSize: 12,
-        fontWeight: '600',
-        color: '#7A8492',
+        color: TEXT_MUTED,
         marginBottom: 8,
     },
 
     inputField: {
-        height: 50,
+        height: 52,
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#FFFFFF',
-        borderWidth: 1,
-        borderColor: '#E8ECF1',
-        borderRadius: 12,
+        backgroundColor: WHITE,
+        borderWidth: 1.5,
+        borderColor: BORDER,
+        borderRadius: 14,
         paddingHorizontal: 14,
         marginBottom: 14,
     },
 
     inputError: {
-        borderColor: '#E11D48',
+        borderColor: DANGER,
     },
 
     input: {
         flex: 1,
         marginLeft: 10,
+        fontFamily: 'Poppins_400Regular',
         fontSize: 14,
-        color: '#12263A',
+        color: TEXT_DARK,
     },
 
     errorText: {
+        fontFamily: 'Poppins_400Regular',
         fontSize: 11,
-        color: '#E11D48',
+        color: DANGER,
         marginTop: -8,
         marginBottom: 10,
     },
 
+    saveTouch: {
+        borderRadius: 14,
+        marginTop: 6,
+    },
+
     saveButton: {
-        backgroundColor: '#173D8F',
-        height: 50,
-        borderRadius: 12,
+        height: 52,
+        borderRadius: 14,
         justifyContent: 'center',
         alignItems: 'center',
-        marginTop: 4,
+        elevation: 3,
+        shadowColor: BLUE,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 8,
     },
 
     saveButtonText: {
-        color: '#FFFFFF',
+        fontFamily: 'Poppins_600SemiBold',
         fontSize: 15,
-        fontWeight: '700',
+        color: WHITE,
     },
 
     passwordRow: {
@@ -348,7 +413,7 @@ const styles = StyleSheet.create({
     rowIcon: {
         width: 38,
         height: 38,
-        borderRadius: 19,
+        borderRadius: 12,
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 12,
@@ -359,15 +424,16 @@ const styles = StyleSheet.create({
     },
 
     rowLabel: {
+        fontFamily: 'Poppins_500Medium',
         fontSize: 14,
-        fontWeight: '600',
-        color: '#12263A',
+        color: TEXT_DARK,
     },
 
     rowHint: {
+        fontFamily: 'Poppins_400Regular',
         marginTop: 1,
         fontSize: 12,
-        color: '#7A8492',
+        color: TEXT_MUTED,
     },
 
 });

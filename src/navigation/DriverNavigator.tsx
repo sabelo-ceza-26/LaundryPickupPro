@@ -1,15 +1,15 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import type { NavigatorScreenParams } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import DriverHomeScreen from '../screens/Driver/DriverHomeScreen';
 import OrderScreen from '../screens/Driver/OrderScreen';
 import PickupDetailsScreen from '../screens/Driver/PickupDetailsScreen';
 import DeliveryDetailsScreen from '../screens/Driver/DeliveryDetailsScreen';
-import ChatScreen from '../screens/Driver/ChatScreen';
+import DriverChatScreen from '../screens/Driver/ChatScreen';
 import ProfileScreen from '../screens/Driver/ProfileScreen';
 import NotificationScreen from '../screens/Driver/NotificationScreen';
 import AccountSettingsScreen from '../screens/Driver/AccountSettingsScreen';
@@ -18,7 +18,7 @@ import PrivacySecurityScreen from '../screens/Driver/PrivacySecurityScreen';
 import HelpSupportScreen from '../screens/Driver/HelpSupportScreen';
 import ChangePasswordScreen from '../screens/Driver/ChangePasswordScreen';
 import NavigationScreen from '../screens/Driver/NavigationScreen';
-import { DriverOrdersProvider } from '../context/DriverOrdersContext';
+import ChatScreen from '../components/ChatScreen';
 
 export type Order = {
   id: number;
@@ -29,6 +29,7 @@ export type Order = {
   time: string;
   status?: string;
   phone?: string;
+  driver?: string;
   laundromat?: string;
   laundromatAddress?: string;
   notes?: string;
@@ -65,22 +66,48 @@ export type DriverStackParamList = {
   DeliveryDetails: {
     order: Order;
   };
+
+  ChatScreen: {
+    orderId: string;
+    contactName: string;
+    myRole: 'customer' | 'driver';
+    myName: string;
+  };
 };
 
 const Stack = createNativeStackNavigator<DriverStackParamList>();
 const Tab = createBottomTabNavigator<DriverTabParamList>();
 
+const isWeb = Platform.OS === 'web';
+
 const tabIcons: Record<
   keyof DriverTabParamList,
   {
-    active: keyof typeof Ionicons.glyphMap;
-    inactive: keyof typeof Ionicons.glyphMap;
+    active: keyof typeof MaterialCommunityIcons.glyphMap;
+    inactive: keyof typeof MaterialCommunityIcons.glyphMap;
   }
 > = {
   Home: { active: 'home', inactive: 'home-outline' },
-  Orders: { active: 'clipboard', inactive: 'clipboard-outline' },
-  Chat: { active: 'chatbubble', inactive: 'chatbubble-outline' },
-  Profile: { active: 'person', inactive: 'person-outline' },
+  Orders: { active: 'clipboard-text', inactive: 'clipboard-text-outline' },
+  Chat: { active: 'chat', inactive: 'chat-outline' },
+  Profile: { active: 'account', inactive: 'account-outline' },
+};
+
+const renderTabIcon = (routeName: keyof DriverTabParamList) => ({
+  color,
+  size,
+}: {
+  color: string;
+  size: number;
+}) => {
+  const icons = tabIcons[routeName];
+  return (
+    <MaterialCommunityIcons
+      name={color === '#5F6F82' ? icons.active : icons.inactive}
+      size={size}
+      color={color}
+    />
+  );
 };
 
 function DriverTabs() {
@@ -89,25 +116,12 @@ function DriverTabs() {
       initialRouteName="Home"
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: '#173D8F',
-        tabBarInactiveTintColor: '#8E8E93',
+        tabBarActiveTintColor: '#5F6F82',
+        tabBarInactiveTintColor: '#2B3642',
+        tabBarIcon: renderTabIcon(route.name as keyof DriverTabParamList),
+        tabBarLabelStyle: styles.tabLabel,
+        tabBarItemStyle: styles.tabItem,
         tabBarStyle: styles.tabBar,
-        tabBarLabel: () => null,
-        tabBarIcon: ({ focused, color }) => {
-          const icons = tabIcons[route.name];
-          return (
-            <View style={styles.tabItem}>
-              <Text style={[styles.tabLabel, { color }]}>
-                {route.name}
-              </Text>
-              <Ionicons
-                name={focused ? icons.active : icons.inactive}
-                size={22}
-                color={color}
-              />
-            </View>
-          );
-        },
       })}
     >
       <Tab.Screen
@@ -120,7 +134,7 @@ function DriverTabs() {
       />
       <Tab.Screen
         name="Chat"
-        component={ChatScreen}
+        component={DriverChatScreen}
       />
       <Tab.Screen
         name="Profile"
@@ -132,71 +146,87 @@ function DriverTabs() {
 
 export default function DriverNavigator() {
   return (
-    <DriverOrdersProvider>
-      <Stack.Navigator
-        initialRouteName="DriverTabs"
-        screenOptions={{
-          headerShown: false,
-        }}
-      >
-        <Stack.Screen
-          name="DriverTabs"
-          component={DriverTabs}
-        />
-        <Stack.Screen
-          name="Notifications"
-          component={NotificationScreen}
-        />
-        <Stack.Screen
-          name="AccountSettings"
-          component={AccountSettingsScreen}
-        />
-        <Stack.Screen
-          name="NotificationSettings"
-          component={NotificationSettingsScreen}
-        />
-        <Stack.Screen
-          name="PrivacySecurity"
-          component={PrivacySecurityScreen}
-        />
-        <Stack.Screen
-          name="HelpSupport"
-          component={HelpSupportScreen}
-        />
-        <Stack.Screen
-          name="ChangePassword"
-          component={ChangePasswordScreen}
-        />
-        <Stack.Screen
-          name="Navigation"
-          component={NavigationScreen}
-        />
-        <Stack.Screen
-          name="OrderDetails"
-          component={PickupDetailsScreen}
-        />
-        <Stack.Screen
-          name="DeliveryDetails"
-          component={DeliveryDetailsScreen}
-        />
-      </Stack.Navigator>
-    </DriverOrdersProvider>
+    <Stack.Navigator
+      initialRouteName="DriverTabs"
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
+      <Stack.Screen
+        name="DriverTabs"
+        component={DriverTabs}
+      />
+      <Stack.Screen
+        name="Notifications"
+        component={NotificationScreen}
+      />
+      <Stack.Screen
+        name="AccountSettings"
+        component={AccountSettingsScreen}
+      />
+      <Stack.Screen
+        name="NotificationSettings"
+        component={NotificationSettingsScreen}
+      />
+      <Stack.Screen
+        name="PrivacySecurity"
+        component={PrivacySecurityScreen}
+      />
+      <Stack.Screen
+        name="HelpSupport"
+        component={HelpSupportScreen}
+      />
+      <Stack.Screen
+        name="ChangePassword"
+        component={ChangePasswordScreen}
+      />
+      <Stack.Screen
+        name="Navigation"
+        component={NavigationScreen}
+      />
+      <Stack.Screen
+        name="OrderDetails"
+        component={PickupDetailsScreen}
+      />
+      <Stack.Screen
+        name="DeliveryDetails"
+        component={DeliveryDetailsScreen}
+      />
+      <Stack.Screen
+        name="ChatScreen"
+        component={ChatScreen}
+      />
+    </Stack.Navigator>
   );
 }
 
 const styles = StyleSheet.create({
   tabBar: {
     backgroundColor: '#FFFFFF',
-    height: 78,
-    paddingTop: 8,
-    paddingBottom: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#E8ECF1',
+    paddingTop: 6,
+    paddingBottom: isWeb ? 10 : 6,
+    height: isWeb ? 72 : 66,
+    ...(isWeb ? {
+      maxWidth: 500,
+      alignSelf: 'center',
+      width: '100%',
+      borderTopLeftRadius: 16,
+      borderTopRightRadius: 16,
+      shadowColor: '#0F363F',
+      shadowOffset: { width: 0, height: -4 },
+      shadowOpacity: 0.08,
+      shadowRadius: 12,
+    } : {}),
   },
   tabItem: {
-    alignItems: 'center',
+    paddingVertical: 2,
+    ...(isWeb ? { minWidth: 64 } : {}),
   },
   tabLabel: {
-    fontSize: 10,
-    fontWeight: '600',
-    marginBottom: 2,
+    fontFamily: 'Poppins_500Medium',
+    fontSize: 11,
+    marginTop: 1,
   },
 });

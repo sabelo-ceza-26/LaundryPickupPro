@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Switch,
@@ -23,6 +24,8 @@ import {
 
 import type { AdminStackParamList } from '../../navigation/AdminNavigator';
 import { useAuth } from '../../hooks/useAuth';
+import { useAdmin, type AdminService } from '../../context/AdminContext';
+import { formatMoney } from '../../utils/format';
 import FancyAlert from '../../components/FancyAlert';
 import { isEmail, isMinLength, isPhone, isRequired, matches } from '../../utils/validation';
 
@@ -131,8 +134,18 @@ const PRIVACY_SECTIONS: { title: string; body: string }[] = [
   },
 ];
 
+const isWeb = Platform.OS === 'web';
+
 export default function SettingsScreen({ navigation }: Props) {
   const { user, signOut, updateUser } = useAuth();
+  const {
+    pricing,
+    updatePricing,
+    services,
+    addService,
+    updateService,
+    deleteService,
+  } = useAdmin();
   const [fontsLoaded] = useFonts({
     Poppins_400Regular,
     Poppins_500Medium,
@@ -160,6 +173,17 @@ export default function SettingsScreen({ navigation }: Props) {
   const [passwordErrors, setPasswordErrors] = useState<Record<string, string>>({});
 
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+
+  const [showServiceModal, setShowServiceModal] = useState(false);
+  const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
+  const [serviceName, setServiceName] = useState('');
+  const [servicePrice, setServicePrice] = useState('');
+  const [serviceErrors, setServiceErrors] = useState<Record<string, string>>({});
+
+  const [showDeliveryModal, setShowDeliveryModal] = useState(false);
+  const [deliveryPriceInput, setDeliveryPriceInput] = useState('');
+  const [deliveryError, setDeliveryError] = useState('');
+
   const [success, setSuccess] = useState<Success>({
     visible: false,
     icon: 'check-circle-outline',
@@ -238,6 +262,98 @@ export default function SettingsScreen({ navigation }: Props) {
     });
   };
 
+  const openAddService = () => {
+    setEditingServiceId(null);
+    setServiceName('');
+    setServicePrice('');
+    setServiceErrors({});
+    setShowServiceModal(true);
+  };
+
+  const openEditService = (service: AdminService) => {
+    setEditingServiceId(service.id);
+    setServiceName(service.name);
+    setServicePrice(String(service.price));
+    setServiceErrors({});
+    setShowServiceModal(true);
+  };
+
+  const saveService = () => {
+    const next: Record<string, string> = {};
+    const price = Number(servicePrice);
+    if (!isRequired(serviceName.trim())) next.name = 'Enter a service name';
+    if (!servicePrice.trim() || Number.isNaN(price) || price <= 0) {
+      next.price = 'Enter a valid price';
+    }
+    setServiceErrors(next);
+    if (Object.keys(next).length > 0) return;
+
+    if (editingServiceId) {
+      updateService(editingServiceId, { name: serviceName.trim(), price });
+      setSuccess({
+        visible: true,
+        icon: 'tag-check-outline',
+        iconColor: '#0B7A50',
+        iconBackground: '#DDF8E8',
+        title: 'Service updated',
+        message: `"${serviceName.trim()}" has been saved with a price of ${formatMoney(price)}.`,
+      });
+    } else {
+      addService(serviceName.trim(), price);
+      setSuccess({
+        visible: true,
+        icon: 'tag-plus-outline',
+        iconColor: '#0B7A50',
+        iconBackground: '#DDF8E8',
+        title: 'Service added',
+        message: `"${serviceName.trim()}" is now available when creating orders.`,
+      });
+    }
+    setShowServiceModal(false);
+  };
+
+  const removeService = (service: AdminService) => {
+    deleteService(service.id);
+    setSuccess({
+      visible: true,
+      icon: 'tag-remove-outline',
+      iconColor: '#B3261E',
+      iconBackground: '#FDE7E8',
+      title: 'Service removed',
+      message: `"${service.name}" has been removed from your services.`,
+    });
+  };
+
+  const openDeliveryEdit = () => {
+    setDeliveryPriceInput(String(pricing.delivery.price));
+    setDeliveryError('');
+    setShowDeliveryModal(true);
+  };
+
+  const saveDeliveryPrice = () => {
+    const price = Number(deliveryPriceInput);
+    if (
+      !deliveryPriceInput.trim() ||
+      Number.isNaN(price) ||
+      price < 0
+    ) {
+      setDeliveryError('Enter a valid amount');
+      return;
+    }
+    updatePricing({
+      delivery: { price, enabled: pricing.delivery.enabled },
+    });
+    setShowDeliveryModal(false);
+    setSuccess({
+      visible: true,
+      icon: 'cash-check',
+      iconColor: '#0B7A50',
+      iconBackground: '#DDF8E8',
+      title: 'Delivery fee updated',
+      message: `The flat delivery fee is now ${formatMoney(price)}.`,
+    });
+  };
+
   const accountRows: LinkRow[] = [
     {
       label: 'Personal information',
@@ -272,15 +388,7 @@ export default function SettingsScreen({ navigation }: Props) {
       icon: 'headset',
       tint: '#DDF8E8',
       color: '#00A85A',
-      onPress: () =>
-        setSuccess({
-          visible: true,
-          icon: 'headset',
-          iconColor: '#0B7A50',
-          iconBackground: '#DDF8E8',
-          title: 'Help & Support',
-          message: 'Our team is available 7 days a week at support@laundrypickuppro.co.za or 0800 123 456.',
-        }),
+      onPress: () => navigation.navigate('HelpSupport'),
     },
   ];
 
@@ -328,6 +436,93 @@ export default function SettingsScreen({ navigation }: Props) {
             onPress={openEdit}
           >
             <MaterialCommunityIcons name="pencil-outline" size={16} color={ICON_DARK} />
+          </TouchableOpacity>
+        </View>
+
+        <Text style={styles.sectionTitle}>Services &amp; Pricing</Text>
+        <View style={styles.card}>
+          <View style={styles.row}>
+            <View style={[styles.rowIcon, { backgroundColor: '#FFF0B8' }]}>
+              <MaterialCommunityIcons
+                name="truck-delivery-outline"
+                size={20}
+                color="#E8960C"
+              />
+            </View>
+            <View style={styles.rowBody}>
+              <Text style={styles.rowLabel}>Delivery fee</Text>
+              <Text style={styles.rowHint}>Flat fee added to every order</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.priceChip}
+              activeOpacity={0.8}
+              onPress={openDeliveryEdit}
+            >
+              <Text style={styles.priceChipText}>
+                {formatMoney(pricing.delivery.price)}
+              </Text>
+              <MaterialCommunityIcons name="pencil-outline" size={13} color={TEAL} />
+            </TouchableOpacity>
+            <Switch
+              value={pricing.delivery.enabled}
+              onValueChange={() =>
+                updatePricing({
+                  delivery: {
+                    price: pricing.delivery.price,
+                    enabled: !pricing.delivery.enabled,
+                  },
+                })
+              }
+              trackColor={{ false: '#D5DCE3', true: '#0E9AA7' }}
+              thumbColor={pricing.delivery.enabled ? '#FFFFFF' : '#F5F7FA'}
+            />
+          </View>
+
+          {services.map((service) => (
+            <View key={service.id} style={styles.row}>
+              <View style={[styles.rowIcon, { backgroundColor: '#EFEBFF' }]}>
+                <MaterialCommunityIcons name="tag-outline" size={20} color="#7857FF" />
+              </View>
+              <View style={styles.rowBody}>
+                <Text style={styles.rowLabel} numberOfLines={1}>
+                  {service.name}
+                </Text>
+                <Text style={styles.rowHint}>{formatMoney(service.price)}</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.iconChip}
+                activeOpacity={0.8}
+                onPress={() => openEditService(service)}
+              >
+                <MaterialCommunityIcons name="pencil-outline" size={17} color={TEAL} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.iconChip, styles.iconChipDanger]}
+                activeOpacity={0.8}
+                onPress={() => removeService(service)}
+              >
+                <MaterialCommunityIcons
+                  name="trash-can-outline"
+                  size={17}
+                  color={DANGER}
+                />
+              </TouchableOpacity>
+            </View>
+          ))}
+
+          <TouchableOpacity
+            style={[styles.row, styles.rowLast]}
+            activeOpacity={0.8}
+            onPress={openAddService}
+          >
+            <View style={[styles.rowIcon, { backgroundColor: '#DDF8E8' }]}>
+              <MaterialCommunityIcons name="plus" size={20} color="#00A85A" />
+            </View>
+            <View style={styles.rowBody}>
+              <Text style={[styles.rowLabel, { color: TEAL }]}>Add service</Text>
+              <Text style={styles.rowHint}>Create a new service with its price</Text>
+            </View>
+            <MaterialCommunityIcons name="chevron-right" size={20} color={TEXT_MUTED} />
           </TouchableOpacity>
         </View>
 
@@ -608,6 +803,120 @@ export default function SettingsScreen({ navigation }: Props) {
       </Modal>
 
       <Modal
+        visible={showServiceModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowServiceModal(false)}
+      >
+        <View style={styles.editOverlay}>
+          <View style={styles.editCard}>
+            <View style={styles.editHeader}>
+              <Text style={styles.editTitle}>
+                {editingServiceId ? 'Edit Service' : 'Add Service'}
+              </Text>
+              <TouchableOpacity
+                style={styles.editClose}
+                onPress={() => setShowServiceModal(false)}
+              >
+                <MaterialCommunityIcons name="close" size={20} color={TEXT_MUTED} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.editLabel}>Service name</Text>
+            <View style={[styles.editInputField, serviceErrors.name && styles.editInputError]}>
+              <MaterialCommunityIcons name="tag-outline" size={18} color={TEXT_MUTED} />
+              <TextInput
+                style={styles.editInput}
+                value={serviceName}
+                onChangeText={setServiceName}
+                placeholder="e.g. Wash and Fold (per kg)"
+                placeholderTextColor={TEXT_MUTED}
+                autoCapitalize="words"
+              />
+            </View>
+            {serviceErrors.name && (
+              <Text style={styles.editErrorText}>{serviceErrors.name}</Text>
+            )}
+
+            <Text style={styles.editLabel}>Price (R)</Text>
+            <View style={[styles.editInputField, serviceErrors.price && styles.editInputError]}>
+              <MaterialCommunityIcons name="cash-multiple" size={18} color={TEXT_MUTED} />
+              <TextInput
+                style={styles.editInput}
+                value={servicePrice}
+                onChangeText={setServicePrice}
+                placeholder="0.00"
+                placeholderTextColor={TEXT_MUTED}
+                keyboardType="numeric"
+              />
+            </View>
+            {serviceErrors.price && (
+              <Text style={styles.editErrorText}>{serviceErrors.price}</Text>
+            )}
+
+            <TouchableOpacity
+              style={styles.editSaveTouch}
+              activeOpacity={0.9}
+              onPress={saveService}
+            >
+              <LinearGradient colors={GRADIENT_HEADER} style={styles.editSave}>
+                <Text style={styles.editSaveText}>
+                  {editingServiceId ? 'Save changes' : 'Add service'}
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={showDeliveryModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowDeliveryModal(false)}
+      >
+        <View style={styles.editOverlay}>
+          <View style={styles.editCard}>
+            <View style={styles.editHeader}>
+              <Text style={styles.editTitle}>Delivery Fee</Text>
+              <TouchableOpacity
+                style={styles.editClose}
+                onPress={() => setShowDeliveryModal(false)}
+              >
+                <MaterialCommunityIcons name="close" size={20} color={TEXT_MUTED} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.editLabel}>Flat delivery fee (R)</Text>
+            <View style={[styles.editInputField, deliveryError && styles.editInputError]}>
+              <MaterialCommunityIcons name="truck-delivery-outline" size={18} color={TEXT_MUTED} />
+              <TextInput
+                style={styles.editInput}
+                value={deliveryPriceInput}
+                onChangeText={setDeliveryPriceInput}
+                placeholder="0.00"
+                placeholderTextColor={TEXT_MUTED}
+                keyboardType="numeric"
+              />
+            </View>
+            {deliveryError ? (
+              <Text style={styles.editErrorText}>{deliveryError}</Text>
+            ) : null}
+
+            <TouchableOpacity
+              style={styles.editSaveTouch}
+              activeOpacity={0.9}
+              onPress={saveDeliveryPrice}
+            >
+              <LinearGradient colors={GRADIENT_HEADER} style={styles.editSave}>
+                <Text style={styles.editSaveText}>Save fee</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
         visible={showPrivacyModal}
         transparent
         animationType="slide"
@@ -703,9 +1012,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#F7F9FB',
   },
   container: {
-    paddingHorizontal: 20,
+    paddingHorizontal: isWeb ? 32 : 20,
     paddingTop: 8,
     paddingBottom: 40,
+    ...(isWeb ? { maxWidth: 700, alignSelf: 'center', width: '100%' } : {}),
   },
   profileCard: {
     flexDirection: 'row',
@@ -817,6 +1127,33 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_500Medium',
     fontSize: 13,
     color: TEXT_MUTED,
+  },
+  priceChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E9F7F8',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginRight: 10,
+  },
+  priceChipText: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 12,
+    color: TEAL,
+    marginRight: 4,
+  },
+  iconChip: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: '#F3F6F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
+  },
+  iconChipDanger: {
+    backgroundColor: '#FDE7E8',
   },
   logoutButton: {
     height: 54,

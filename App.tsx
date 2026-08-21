@@ -1,64 +1,93 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import AppNavigator from './src/navigation/AppNavigator';
 import { AuthProvider } from './src/context/AuthContext';
+import { NotificationsProvider } from './src/context/NotificationsContext';
+import { AdminProvider } from './src/context/AdminContext';
+import { DriverOrdersProvider } from './src/context/DriverOrdersContext';
+import { ChatProvider } from './src/context/ChatContext';
+import { SupportProvider } from './src/context/SupportContext';
 import { colors } from './src/theme/colors';
+
+if (Platform.OS === 'web') {
+  const style = document.createElement('style');
+  style.textContent = `
+    html, body, #root {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    #root {
+      display: flex;
+      flex-direction: column;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(0,0,0,0.15);
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(0,0,0,0.25);
+    }
+    input, textarea, select, button {
+      font-family: inherit;
+    }
+  `;
+  document.head.appendChild(style);
+  document.title = 'Laundry Pickup Pro';
+}
 
 function AppContent() {
   return (
     <AuthProvider>
-      <NavigationContainer>
-        <AppNavigator />
-      </NavigationContainer>
+      <NotificationsProvider>
+        <AdminProvider>
+          <DriverOrdersProvider>
+            <ChatProvider>
+              <SupportProvider>
+                <NavigationContainer>
+                  <AppNavigator />
+                </NavigationContainer>
+              </SupportProvider>
+            </ChatProvider>
+          </DriverOrdersProvider>
+        </AdminProvider>
+      </NotificationsProvider>
     </AuthProvider>
   );
 }
 
 export default function App() {
-  if (Platform.OS === 'web') {
-    return (
-      <SafeAreaProvider>
-        <View style={styles.webStage}>
-          <View style={styles.webFrame}>
-            <AppContent />
-          </View>
-        </View>
-      </SafeAreaProvider>
-    );
-  }
-
   return (
     <SafeAreaProvider>
-      <AppContent />
+      <View style={styles.root}>
+        <AppContent />
+      </View>
     </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  webStage: {
+  root: {
     flex: 1,
     width: '100%',
-    backgroundColor: '#DFE5E9',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  webFrame: {
-    flex: 1,
-    width: '100%',
-    maxWidth: 430,
-    maxHeight: 900,
-    borderRadius: 36,
-    overflow: 'hidden',
+    height: '100%',
     backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: 'rgba(15, 54, 63, 0.08)',
-    shadowColor: '#0F363F',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.18,
-    shadowRadius: 32,
-    elevation: 12,
   },
 });

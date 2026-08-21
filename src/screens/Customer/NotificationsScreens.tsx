@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   FlatList,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -19,6 +20,10 @@ import {
 } from '@expo-google-fonts/poppins';
 
 import type { CustomerStackParamList } from '../../navigation/types';
+import {
+  useNotifications,
+  type AppNotification,
+} from '../../context/NotificationsContext';
 
 type Props = NativeStackScreenProps<CustomerStackParamList, 'Notifications'>;
 
@@ -27,7 +32,7 @@ type Icon = keyof typeof MaterialCommunityIcons.glyphMap;
 type NotificationType = 'order' | 'promotion' | 'system' | 'alert';
 
 type Notification = {
-  id: number;
+  id: string;
   title: string;
   message: string;
   time: string;
@@ -65,66 +70,54 @@ const TYPE_COLOR: Record<NotificationType, { color: string; tint: string }> = {
   alert: { color: DANGER, tint: RED_TINT },
 };
 
-const initialNotifications: Notification[] = [
-  {
-    id: 1,
-    title: 'Pickup confirmed',
-    message: 'Your pickup for LPP-728104 is confirmed for 9:00 AM – 11:00 AM today.',
-    time: '10 min ago',
-    read: false,
-    icon: 'calendar-check-outline',
-    type: 'order',
-  },
-  {
-    id: 2,
-    title: 'Your order is out for delivery',
-    message: 'Sipho Ndlovu is on the way with your laundry.',
-    time: '25 min ago',
-    read: false,
-    icon: 'truck-delivery-outline',
-    type: 'system',
-  },
-  {
-    id: 3,
-    title: 'Payment received',
-    message: 'Your card payment of R169.50 for LPP-728104 was successful.',
-    time: '1 hr ago',
-    read: false,
-    icon: 'credit-card-check-outline',
-    type: 'order',
-  },
-  {
-    id: 4,
-    title: 'Items received',
-    message: 'Your items have been received and will be delivered on schedule.',
-    time: '2 hrs ago',
-    read: true,
-    icon: 'storefront-outline',
-    type: 'system',
-  },
-  {
-    id: 5,
-    title: 'Special offer',
-    message: 'Get R50 off your next order when you refer a friend.',
-    time: 'Yesterday',
-    read: true,
-    icon: 'tag-heart',
-    type: 'promotion',
-  },
-  {
-    id: 6,
-    title: 'Order delivered',
-    message: 'LPP-671925 was delivered successfully. Thanks for using Laundry Pickup Pro!',
-    time: 'Fri, Jul 31',
-    read: true,
-    icon: 'package-variant-closed-check',
-    type: 'system',
-  },
-];
+const KIND_META: Record<
+  AppNotification['kind'],
+  { icon: Icon; type: NotificationType }
+> = {
+  order_assigned: { icon: 'calendar-check-outline', type: 'order' },
+  new_message: { icon: 'message-text-outline', type: 'system' },
+  order_delivered: { icon: 'package-variant-closed-check', type: 'system' },
+};
+
+function relativeTime(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const minutes = Math.floor(diffMs / 60000);
+  if (minutes < 1) return 'Just now';
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hr${hours > 1 ? 's' : ''} ago`;
+  const days = Math.floor(hours / 24);
+  return `${days} day${days > 1 ? 's' : ''} ago`;
+}
+
+function decorate(notification: AppNotification): Notification {
+  const meta = KIND_META[notification.kind] ?? {
+    icon: 'bell-outline' as Icon,
+    type: 'system' as NotificationType,
+  };
+  return {
+    id: notification.id,
+    title: notification.title,
+    message: notification.message,
+    time: relativeTime(notification.createdAt),
+    read: notification.read,
+    ...meta,
+  };
+}
+
+const isWeb = Platform.OS === 'web';
 
 export default function NotificationsScreen({ navigation }: Props) {
-  const [notifications, setNotifications] =
-    useState<Notification[]>(initialNotifications);
+  const {
+    notifications: stored,
+    unreadCount,
+    loading,
+    markAsRead,
+    markAllAsRead,
+  } = useNotifications();
+
+  const notifications = stored.map(decorate);
+
   const [fontsLoaded] = useFonts({
     Poppins_400Regular,
     Poppins_500Medium,
@@ -133,18 +126,6 @@ export default function NotificationsScreen({ navigation }: Props) {
   });
 
   if (!fontsLoaded) return null;
-
-  const unreadCount = notifications.filter((n) => !n.read).length;
-
-  const markAsRead = (id: number) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-    );
-  };
-
-  const markAllAsRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -194,7 +175,9 @@ export default function NotificationsScreen({ navigation }: Props) {
             <View style={styles.emptyIconCircle}>
               <MaterialCommunityIcons name="bell-off-outline" size={40} color={PRIMARY} />
             </View>
-            <Text style={styles.emptyTitle}>No notifications yet</Text>
+            <Text style={styles.emptyTitle}>
+              {loading ? 'Loading notifications…' : 'No notifications yet'}
+            </Text>
             <Text style={styles.emptySubtitle}>
               Updates about your orders will appear here.
             </Text>
@@ -358,8 +341,9 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   listContent: {
-    padding: 16,
+    padding: isWeb ? 32 : 16,
     paddingBottom: 40,
+    ...(isWeb ? { maxWidth: 600, alignSelf: 'center', width: '100%' } : {}),
   },
   card: {
     backgroundColor: WHITE,

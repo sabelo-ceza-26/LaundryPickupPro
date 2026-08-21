@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   Alert,
+  Platform,
   ScrollView,
   StyleSheet,
   Switch,
@@ -47,6 +48,8 @@ const WHITE = '#FFFFFF';
 const DANGER = '#E5484D';
 const SECTION = '#0E7A86';
 const GRADIENT_RED = ['#FF7A70', '#E5484D'] as const;
+
+const isWeb = Platform.OS === 'web';
 
 const toggleRows: ToggleRow[] = [
   {
@@ -216,9 +219,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#F7F9FB',
   },
   container: {
-    paddingHorizontal: 20,
+    paddingHorizontal: isWeb ? 32 : 20,
     paddingTop: 8,
     paddingBottom: 40,
+    ...(isWeb ? { maxWidth: 600, alignSelf: 'center', width: '100%' } : {}),
   },
   profileCard: {
     flexDirection: 'row',

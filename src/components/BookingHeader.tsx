@@ -19,9 +19,14 @@ const GRADIENT_HEADER = ['#FFFFFF', '#F2F4F7'] as const;
 type Props = {
   title: string;
   onBack: () => void;
+  showCancelBooking?: boolean;
 };
 
-export default function BookingHeader({ title, onBack }: Props) {
+export default function BookingHeader({
+  title,
+  onBack,
+  showCancelBooking = true,
+}: Props) {
   const [menuVisible, setMenuVisible] = useState(false);
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [helpVisible, setHelpVisible] = useState(false);
@@ -90,24 +95,28 @@ export default function BookingHeader({ title, onBack }: Props) {
               <MaterialCommunityIcons name="chevron-right" size={22} color="#C3CDD7" />
             </TouchableOpacity>
 
-            <View style={styles.menuDivider} />
+            {showCancelBooking && (
+              <>
+                <View style={styles.menuDivider} />
 
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={openCancel}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.menuIcon, { backgroundColor: '#FDE7E8' }]}>
-                <MaterialCommunityIcons name="close-circle-outline" size={22} color="#E5484D" />
-              </View>
-              <View style={styles.menuText}>
-                <Text style={[styles.menuTitle, { color: '#E5484D' }]}>
-                  Cancel booking
-                </Text>
-                <Text style={styles.menuDesc}>Exit this booking without saving</Text>
-              </View>
-              <MaterialCommunityIcons name="chevron-right" size={22} color="#C3CDD7" />
-            </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.menuItem}
+                  onPress={openCancel}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.menuIcon, { backgroundColor: '#FDE7E8' }]}>
+                    <MaterialCommunityIcons name="close-circle-outline" size={22} color="#E5484D" />
+                  </View>
+                  <View style={styles.menuText}>
+                    <Text style={[styles.menuTitle, { color: '#E5484D' }]}>
+                      Cancel booking
+                    </Text>
+                    <Text style={styles.menuDesc}>Exit this booking without saving</Text>
+                  </View>
+                  <MaterialCommunityIcons name="chevron-right" size={22} color="#C3CDD7" />
+                </TouchableOpacity>
+              </>
+            )}
           </View>
         </View>
       </Modal>

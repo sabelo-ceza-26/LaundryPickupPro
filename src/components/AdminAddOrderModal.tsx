@@ -43,9 +43,16 @@ const GRADIENT_VIBRANT = [BLUE, PURPLE] as const;
 
 const PAYMENT_METHODS = ['Card', 'EFT', 'Cash'] as const;
 
-const PRESET_ITEMS: { name: string; price: number; icon: Icon }[] = [
-  { name: 'Pickup & Delivery', price: 60, icon: 'truck-delivery-outline' },
-];
+function serviceIcon(name: string): Icon {
+  const lower = name.toLowerCase();
+  if (lower.includes('pick') || lower.includes('deliver')) {
+    return 'truck-delivery-outline';
+  }
+  if (lower.includes('wash')) return 'washing-machine';
+  if (lower.includes('iron')) return 'tshirt-crew-outline';
+  if (lower.includes('dry')) return 'weather-windy';
+  return 'tag-outline';
+}
 
 let nextOrderNumber = 9036;
 
@@ -70,7 +77,7 @@ export default function AdminAddOrderModal({
   onClose,
   onSubmit,
 }: Props) {
-  const { pricing, drivers } = useAdmin();
+  const { pricing, drivers, services } = useAdmin();
 
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -83,15 +90,19 @@ export default function AdminAddOrderModal({
   const [instructions, setInstructions] = useState('');
   const [paymentMethod, setPaymentMethod] =
     useState<(typeof PAYMENT_METHODS)[number]>('Card');
-  const [items, setItems] = useState<AdminOrderItem[]>([
-    { name: 'Wash & Fold (per kg)', quantity: 1, price: 55 },
-  ]);
   const [customName, setCustomName] = useState('');
   const [customPrice, setCustomPrice] = useState('');
   const [customError, setCustomError] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const deliveryFee = pricing.delivery.enabled ? pricing.delivery.price : 0;
+
+  const defaultItems = (): AdminOrderItem[] =>
+    services.length > 0
+      ? [{ name: services[0].name, quantity: 1, price: services[0].price }]
+      : [];
+
+  const [items, setItems] = useState<AdminOrderItem[]>(defaultItems);
 
   const reset = () => {
     setName('');
@@ -104,7 +115,7 @@ export default function AdminAddOrderModal({
     setDriverPhone('083 000 0000');
     setInstructions('');
     setPaymentMethod('Card');
-    setItems([{ name: 'Pickup & Delivery', quantity: 1, price: 60 }]);
+    setItems(defaultItems());
     setCustomName('');
     setCustomPrice('');
     setCustomError('');
@@ -196,6 +207,7 @@ export default function AdminAddOrderModal({
       driverPhone: driverPhone || '083 000 0000',
       status: 'Pending',
       placedAt: currentStamp(),
+      placedAtISO: new Date().toISOString(),
       items,
       deliveryFee,
       paymentMethod,
@@ -376,19 +388,32 @@ export default function AdminAddOrderModal({
             {errors.driver && <Text style={styles.errorText}>{errors.driver}</Text>}
 
             <Text style={styles.sectionLabel}>Items</Text>
-            <View style={styles.presetWrap}>
-              {PRESET_ITEMS.map((preset) => (
-                <TouchableOpacity
-                  key={preset.name}
-                  style={styles.presetChip}
-                  activeOpacity={0.85}
-                  onPress={() => addPreset(preset)}
-                >
-                  <MaterialCommunityIcons name={preset.icon} size={14} color={BLUE} />
-                  <Text style={styles.presetText}>{preset.name}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            {services.length > 0 ? (
+              <View style={styles.presetWrap}>
+                {services.map((service) => (
+                  <TouchableOpacity
+                    key={service.id}
+                    style={styles.presetChip}
+                    activeOpacity={0.85}
+                    onPress={() =>
+                      addPreset({ name: service.name, price: service.price })
+                    }
+                  >
+                    <MaterialCommunityIcons
+                      name={serviceIcon(service.name)}
+                      size={14}
+                      color={BLUE}
+                    />
+                    <Text style={styles.presetText}>{service.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.emptyServicesText}>
+                No services configured yet. Add services and prices in Admin
+                Settings first.
+              </Text>
+            )}
 
             <View style={styles.customWrap}>
               <View style={[styles.inputField, styles.customNameField, customError && styles.inputError]}>
@@ -661,6 +686,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: BLUE,
     marginLeft: 5,
+  },
+  emptyServicesText: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 12,
+    color: TEXT_MUTED,
+    marginBottom: 8,
   },
   driverWrap: {
     flexDirection: 'row',

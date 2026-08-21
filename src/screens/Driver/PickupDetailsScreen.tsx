@@ -1,513 +1,402 @@
 import React, { useState } from 'react';
 import {
-    Alert,
-    Linking,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Alert,
+  Linking,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import {
+  useFonts,
+  Poppins_400Regular,
+  Poppins_500Medium,
+  Poppins_600SemiBold,
+  Poppins_700Bold,
+} from '@expo-google-fonts/poppins';
 
+import BookingHeader from '../../components/BookingHeader';
+import FancyAlert from '../../components/FancyAlert';
 import type { DriverStackParamList } from '../../navigation/DriverNavigator';
 import { useDriverOrders } from '../../context/DriverOrdersContext';
+import { useAuth } from '../../hooks/useAuth';
 
-type Props = NativeStackScreenProps<
-    DriverStackParamList,
-    'OrderDetails'
->;
+const isWeb = Platform.OS === 'web';
 
-export default function PickupDetailsScreen({
-    navigation,
-    route,
-}: Props) {
+const TEXT_DARK = '#1F2933';
+const TEXT_MUTED = '#7A869A';
+const WHITE = '#FFFFFF';
+const BLUE = '#2E6BFF';
+const BLUE_TINT = '#E4EEFF';
+const GREEN = '#00A85A';
+const GREEN_TINT = '#DDF8E8';
+const BORDER = '#E8ECF1';
+const DANGER = '#E5484D';
+const TEAL_HEADING = '#0E7A86';
 
-    const { order } = route.params;
-    const { updateOrderStatus } = useDriverOrders();
+const GRADIENT_PRIMARY = [BLUE, '#7857FF'] as const;
+const GRADIENT_GREEN = ['#00A85A', '#0B7A50'] as const;
 
-    const [showConfirm, setShowConfirm] = useState(false);
-    const [showSuccess, setShowSuccess] = useState(false);
+type Props = NativeStackScreenProps<DriverStackParamList, 'OrderDetails'>;
 
-    const openMaps = () => {
-        Linking.openURL(
-            `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
-                order.address,
-            )}`,
-        ).catch(() =>
-            Alert.alert(
-                'Cannot open maps',
-                'No map application is available on this device.',
-            ),
-        );
-    };
+type Icon = keyof typeof MaterialCommunityIcons.glyphMap;
 
-    const confirmPickup = () => {
-        setShowConfirm(false);
-        updateOrderStatus(order.orderNumber, 'Completed');
-        setShowSuccess(true);
-    };
+type DetailRowProps = {
+  icon: Icon;
+  label: string;
+  value: string;
+  color?: string;
+  tint?: string;
+  last?: boolean;
+};
 
-    return (
-        <SafeAreaView style={styles.safeArea}>
-            <ScrollView contentContainerStyle={styles.container}>
+function DetailRow({
+  icon,
+  label,
+  value,
+  color = BLUE,
+  tint = BLUE_TINT,
+  last,
+}: DetailRowProps) {
+  return (
+    <View style={[styles.detailRow, last && styles.detailRowLast]}>
+      <View style={[styles.detailIcon, { backgroundColor: tint }]}>
+        <MaterialCommunityIcons name={icon} size={18} color={color} />
+      </View>
+      <View style={styles.detailBody}>
+        <Text style={styles.detailLabel}>{label}</Text>
+        <Text style={styles.detailValue}>{value}</Text>
+      </View>
+    </View>
+  );
+}
 
-                {/* Header */}
-                <View style={styles.header}>
+export default function PickupDetailsScreen({ navigation, route }: Props) {
+  const { order } = route.params;
+  const { updateOrderStatus } = useDriverOrders();
+  const { user } = useAuth();
 
-                    <TouchableOpacity onPress={() => navigation.goBack()}>
-                        <Ionicons
-                            name="chevron-back"
-                            size={28}
-                            color="#12263A"
-                        />
-                    </TouchableOpacity>
+  const [fontsLoaded] = useFonts({
+    Poppins_400Regular,
+    Poppins_500Medium,
+    Poppins_600SemiBold,
+    Poppins_700Bold,
+  });
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
-                    <Text style={styles.title}>
-                        Pickup Details
-                    </Text>
+  if (!fontsLoaded) return null;
 
-                    <View style={{ width: 28 }} />
-
-                </View>
-
-                {/* Order Number */}
-                <View style={styles.card}>
-
-                    <Text style={styles.orderLabel}>
-                        Order Number
-                    </Text>
-
-                    <Text style={styles.orderNumber}>
-                        {order.orderNumber}
-                    </Text>
-
-                </View>
-
-                {/* Customer */}
-                <View style={[styles.card, styles.customerSection]}>
-
-                    <View style={styles.avatar}>
-                        <MaterialCommunityIcons
-                            name="account"
-                            size={30}
-                            color="#FFFFFF"
-                        />
-                    </View>
-
-                    <View style={styles.customerInfo}>
-
-                        <Text style={styles.customerName}>
-                            {order.customer}
-                        </Text>
-
-                        <Text style={styles.phone}>
-                            {order.phone}
-                        </Text>
-
-                    </View>
-
-                </View>
-
-                {/* Pickup Address */}
-                <Text style={styles.heading}>
-                    Pickup Address
-                </Text>
-
-                <View style={styles.card}>
-                    <Text style={styles.info}>
-                        {order.address}
-                    </Text>
-                </View>
-
-                {/* Laundromat */}
-                <Text style={styles.heading}>
-                    Laundromat
-                </Text>
-
-                <View style={styles.card}>
-
-                    <Text style={styles.info}>
-                        {order.laundromat}
-                    </Text>
-
-                    <Text style={styles.infoSub}>
-                        {order.laundromatAddress}
-                    </Text>
-
-                </View>
-
-                {/* Pickup Time */}
-                <Text style={styles.heading}>
-                    Pickup Time
-                </Text>
-
-                <View style={styles.card}>
-                    <Text style={styles.info}>
-                        {order.time}
-                    </Text>
-                </View>
-
-                {/* Notes */}
-                <Text style={styles.heading}>
-                    Special Notes
-                </Text>
-
-                <View style={styles.card}>
-                    <Text style={styles.notes}>
-                        {order.notes}
-                    </Text>
-                </View>
-
-                {/* Buttons */}
-                <TouchableOpacity
-                    style={styles.pickupButton}
-                    onPress={() => setShowConfirm(true)}
-                >
-                    <Text style={styles.pickupButtonText}>
-                        Mark as Picked Up
-                    </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    style={styles.mapButton}
-                    onPress={openMaps}
-                >
-                    <Text style={styles.mapButtonText}>
-                        Open Maps
-                    </Text>
-                </TouchableOpacity>
-
-            </ScrollView>
-
-            {/* Confirmation Modal */}
-            <Modal
-                visible={showConfirm}
-                transparent
-                animationType="fade"
-                onRequestClose={() => setShowConfirm(false)}
-            >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalCard}>
-                        <View style={styles.modalIcon}>
-                            <MaterialCommunityIcons
-                                name="truck-delivery-outline"
-                                size={30}
-                                color="#16A34A"
-                            />
-                        </View>
-                        <Text style={styles.modalTitle}>
-                            Mark as picked up?
-                        </Text>
-                        <Text style={styles.modalMessage}>
-                            Confirm that you have collected the laundry
-                            for {order.orderNumber} from {order.customer}.
-                        </Text>
-                        <View style={styles.modalActions}>
-                            <TouchableOpacity
-                                style={styles.modalCancelButton}
-                                onPress={() => setShowConfirm(false)}
-                            >
-                                <Text style={styles.modalCancelText}>
-                                    Cancel
-                                </Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={styles.modalConfirmButton}
-                                onPress={confirmPickup}
-                            >
-                                <Text style={styles.modalConfirmText}>
-                                    Confirm
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-            </Modal>
-
-            {/* Success Modal */}
-            <Modal
-                visible={showSuccess}
-                transparent
-                animationType="fade"
-                onRequestClose={() => {
-                    setShowSuccess(false);
-                    navigation.goBack();
-                }}
-            >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalCard}>
-                        <View style={[styles.modalIcon, styles.successIcon]}>
-                            <Ionicons
-                                name="checkmark"
-                                size={32}
-                                color="#FFFFFF"
-                            />
-                        </View>
-                        <Text style={styles.modalTitle}>
-                            Order Picked Up
-                        </Text>
-                        <Text style={styles.modalMessage}>
-                            {order.orderNumber} has been marked as picked
-                            up successfully.
-                        </Text>
-                        <TouchableOpacity
-                            style={styles.successButton}
-                            onPress={() => {
-                                setShowSuccess(false);
-                                navigation.goBack();
-                            }}
-                        >
-                            <Text style={styles.successButtonText}>
-                                Done
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </Modal>
-
-        </SafeAreaView>
+  const openMaps = () => {
+    Linking.openURL(
+      `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
+        order.address,
+      )}`,
+    ).catch(() =>
+      Alert.alert(
+        'Cannot open maps',
+        'No map application is available on this device.',
+      ),
     );
+  };
+
+  const confirmPickup = () => {
+    setShowConfirm(false);
+    updateOrderStatus(order.orderNumber, 'Completed');
+    setShowSuccess(true);
+  };
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <BookingHeader
+        title="Pickup Details"
+        onBack={() => navigation.goBack()}
+        showCancelBooking={false}
+      />
+
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Order Number</Text>
+          <Text style={styles.orderNumber}>{order.orderNumber}</Text>
+        </View>
+
+        <View style={styles.card}>
+          <DetailRow
+            icon="account-outline"
+            label="Customer"
+            value={order.customer}
+            color={BLUE}
+            tint={BLUE_TINT}
+          />
+          <DetailRow
+            icon="phone-outline"
+            label="Phone"
+            value={order.phone ?? ''}
+            color={GREEN}
+            tint={GREEN_TINT}
+            last
+          />
+        </View>
+
+        <View style={styles.card}>
+          <DetailRow
+            icon="map-marker-outline"
+            label="Pickup Address"
+            value={order.address}
+            color={BLUE}
+            tint={BLUE_TINT}
+            last
+          />
+        </View>
+
+        <View style={styles.card}>
+          <DetailRow
+            icon="washing-machine"
+            label="Laundromat"
+            value={order.laundromat ?? ''}
+            color={TEAL_HEADING}
+            tint="#D6F0F4"
+          />
+          <DetailRow
+            icon="map-marker-outline"
+            label="Laundromat Address"
+            value={order.laundromatAddress ?? ''}
+            color={BLUE}
+            tint={BLUE_TINT}
+            last
+          />
+        </View>
+
+        <View style={styles.card}>
+          <DetailRow
+            icon="clock-outline"
+            label="Pickup Time"
+            value={order.time}
+            color="#E8960C"
+            tint="#FFF0B8"
+            last
+          />
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Special Notes</Text>
+          <Text style={styles.notesText}>
+            {order.notes || 'No special notes added.'}
+          </Text>
+        </View>
+      </ScrollView>
+
+      <View style={styles.footer}>
+        <TouchableOpacity
+          style={styles.primaryTouch}
+          activeOpacity={0.9}
+          onPress={() => setShowConfirm(true)}
+        >
+          <LinearGradient colors={GRADIENT_GREEN} style={styles.primaryButton}>
+            <MaterialCommunityIcons name="truck-delivery-outline" size={20} color={WHITE} />
+            <Text style={styles.primaryButtonText}>Mark as Picked Up</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.outlineTouch}
+          activeOpacity={0.85}
+          onPress={openMaps}
+        >
+          <View style={styles.outlineButton}>
+            <MaterialCommunityIcons name="map-outline" size={18} color={BLUE} />
+            <Text style={styles.outlineButtonText}>Open Maps</Text>
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.outlineTouch}
+          activeOpacity={0.85}
+          onPress={() =>
+            navigation.navigate('ChatScreen', {
+              orderId: order.orderNumber,
+              contactName: order.customer,
+              myRole: 'driver',
+              myName: user?.name ?? 'Driver',
+            })
+          }
+        >
+          <View style={styles.outlineButton}>
+            <MaterialCommunityIcons name="chat-outline" size={18} color="#7857FF" />
+            <Text style={[styles.outlineButtonText, { color: '#7857FF' }]}>
+              Chat with {order.customer}
+            </Text>
+          </View>
+        </TouchableOpacity>
+      </View>
+
+      <FancyAlert
+        visible={showConfirm}
+        title="Mark as picked up?"
+        message={`Confirm that you have collected the laundry for ${order.orderNumber} from ${order.customer}.`}
+        icon="truck-delivery-outline"
+        iconColor={GREEN}
+        iconBackground={GREEN_TINT}
+        buttonText="Confirm Pickup"
+        onClose={confirmPickup}
+      />
+
+      <FancyAlert
+        visible={showSuccess}
+        title="Order Picked Up"
+        message={`${order.orderNumber} has been marked as picked up successfully.`}
+        icon="check-circle-outline"
+        iconColor={GREEN}
+        iconBackground={GREEN_TINT}
+        buttonText="Done"
+        onClose={() => {
+          setShowSuccess(false);
+          navigation.goBack();
+        }}
+      />
+    </SafeAreaView>
+  );
 }
 
 const styles = StyleSheet.create({
-
-    safeArea: {
-        flex: 1,
-        backgroundColor: '#F5F7FA',
-    },
-
-    container: {
-        padding: 20,
-        paddingBottom: 30,
-    },
-
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 20,
-    },
-
-    title: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: '#12263A',
-    },
-
-    card: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 14,
-        padding: 15,
-        marginBottom: 14,
-        elevation: 2,
-    },
-
-    orderLabel: {
-        fontSize: 12,
-        color: '#7A8492',
-        marginBottom: 5,
-    },
-
-    orderNumber: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: '#173D8F',
-    },
-
-    customerSection: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-
-    avatar: {
-        width: 54,
-        height: 54,
-        borderRadius: 27,
-        backgroundColor: '#173D8F',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 15,
-    },
-
-    customerInfo: {
-        flex: 1,
-    },
-
-    customerName: {
-        fontSize: 17,
-        fontWeight: '700',
-        color: '#12263A',
-    },
-
-    phone: {
-        fontSize: 14,
-        color: '#666',
-        marginTop: 3,
-    },
-
-    heading: {
-        fontSize: 15,
-        fontWeight: '700',
-        color: '#12263A',
-        marginBottom: 10,
-        marginTop: 6,
-    },
-
-    info: {
-        fontSize: 14,
-        color: '#555',
-    },
-
-    infoSub: {
-        fontSize: 13,
-        color: '#7A8492',
-        marginTop: 4,
-    },
-
-    notes: {
-        fontSize: 14,
-        color: '#777',
-        lineHeight: 22,
-    },
-
-    pickupButton: {
-        backgroundColor: '#16A34A',
-        height: 52,
-        borderRadius: 12,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 15,
-        marginTop: 10,
-    },
-
-    pickupButtonText: {
-        color: '#FFFFFF',
-        fontSize: 16,
-        fontWeight: '700',
-    },
-
-    mapButton: {
-        height: 52,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#D9D9D9',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-
-    mapButtonText: {
-        color: '#173D8F',
-        fontSize: 16,
-        fontWeight: '700',
-    },
-
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(18, 38, 58, 0.45)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingHorizontal: 40,
-    },
-
-    modalCard: {
-        width: '100%',
-        maxWidth: 340,
-        backgroundColor: '#FFFFFF',
-        borderRadius: 18,
-        padding: 24,
-        alignItems: 'center',
-        elevation: 8,
-        shadowColor: '#000000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 12,
-    },
-
-    modalIcon: {
-        width: 60,
-        height: 60,
-        borderRadius: 30,
-        backgroundColor: '#E9F9EF',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 14,
-    },
-
-    successIcon: {
-        backgroundColor: '#16A34A',
-    },
-
-    modalTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: '#12263A',
-    },
-
-    modalMessage: {
-        marginTop: 6,
-        fontSize: 14,
-        color: '#7A8492',
-        textAlign: 'center',
-        lineHeight: 20,
-    },
-
-    modalActions: {
-        flexDirection: 'row',
-        width: '100%',
-        marginTop: 22,
-    },
-
-    modalCancelButton: {
-        flex: 1,
-        height: 48,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#D9D9D9',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 10,
-    },
-
-    modalCancelText: {
-        fontSize: 15,
-        fontWeight: '700',
-        color: '#12263A',
-    },
-
-    modalConfirmButton: {
-        flex: 1,
-        height: 48,
-        borderRadius: 12,
-        backgroundColor: '#16A34A',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginLeft: 10,
-    },
-
-    modalConfirmText: {
-        fontSize: 15,
-        fontWeight: '700',
-        color: '#FFFFFF',
-    },
-
-    successButton: {
-        alignSelf: 'stretch',
-        height: 48,
-        borderRadius: 12,
-        backgroundColor: '#16A34A',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginTop: 20,
-    },
-
-    successButtonText: {
-        fontSize: 15,
-        fontWeight: '700',
-        color: '#FFFFFF',
-    },
-
+  safeArea: {
+    flex: 1,
+    backgroundColor: WHITE,
+  },
+  scroll: {
+    backgroundColor: '#F5F7FA',
+  },
+  container: {
+    paddingHorizontal: isWeb ? 32 : 20,
+    paddingTop: 8,
+    paddingBottom: 110,
+    ...(isWeb ? { maxWidth: 600, alignSelf: 'center', width: '100%' } : {}),
+  },
+  card: {
+    backgroundColor: WHITE,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: BORDER,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 16,
+    elevation: 1,
+    shadowColor: '#26384A',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+  },
+  cardTitle: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 15,
+    color: TEAL_HEADING,
+    marginBottom: 6,
+  },
+  orderNumber: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 20,
+    color: BLUE,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F3F4',
+  },
+  detailRowLast: {
+    borderBottomWidth: 0,
+  },
+  detailIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  detailBody: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  detailLabel: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 11,
+    color: TEXT_MUTED,
+  },
+  detailValue: {
+    fontFamily: 'Poppins_500Medium',
+    fontSize: 13,
+    color: TEXT_DARK,
+    marginTop: 1,
+  },
+  notesText: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 13,
+    lineHeight: 20,
+    color: TEXT_DARK,
+    paddingVertical: 8,
+  },
+  footer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: WHITE,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 16,
+    borderTopWidth: 1,
+    borderTopColor: BORDER,
+  },
+  primaryTouch: {
+    marginBottom: 10,
+    borderRadius: 15,
+    elevation: 4,
+    shadowColor: GREEN,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+  },
+  primaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 52,
+    borderRadius: 15,
+    gap: 8,
+  },
+  primaryButtonText: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 15,
+    color: WHITE,
+  },
+  outlineTouch: {
+    borderRadius: 14,
+  },
+  outlineButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 50,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: BORDER,
+    backgroundColor: WHITE,
+    gap: 6,
+  },
+  outlineButtonText: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 15,
+    color: BLUE,
+  },
 });

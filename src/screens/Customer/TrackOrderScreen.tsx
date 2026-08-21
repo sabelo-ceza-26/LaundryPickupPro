@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   Image,
   Linking,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -12,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   useFonts,
   Poppins_400Regular,
@@ -21,6 +23,7 @@ import {
 } from '@expo-google-fonts/poppins';
 
 import { useOrders } from '../../context/OrdersContext';
+import { useAuth } from '../../hooks/useAuth';
 import type { CustomerTabNavigation, CustomerTabParamList } from '../../navigation/types';
 import { ORDER_STEPS, isOrderActive, orderStepIndex, type OrderStatus } from '../../data/orders';
 import { formatMoney } from '../../utils/format';
@@ -81,8 +84,11 @@ const statusIcon: Record<OrderStatus, keyof typeof MaterialCommunityIcons.glyphM
   Cancelled: 'close-circle-outline',
 };
 
+const isWeb = Platform.OS === 'web';
+
 export default function TrackOrderScreen() {
   const { orders } = useOrders();
+  const { user } = useAuth();
   const navigation = useNavigation<CustomerTabNavigation>();
   const route = useRoute<TrackRoute>();
   const [fontsLoaded] = useFonts({
@@ -162,9 +168,28 @@ export default function TrackOrderScreen() {
 
   const stepIndex = orderStepIndex(order.status);
   const isDelivered = order.status === 'Delivered';
+
+  const statusHint: Record<string, string> = {
+    Scheduled: 'Your order has been scheduled',
+    'Picked Up': 'Your laundry has been picked up',
+    'At Laundromat': 'Your laundry is being washed',
+    'Out for Delivery': 'Your laundry is on its way to you',
+    Delivered: 'Your laundry has been delivered',
+    Cancelled: 'This order has been cancelled',
+  };
   const callDriver = () => {
     if (!order.driverPhone) return;
     Linking.openURL(`tel:${order.driverPhone}`).catch(() => undefined);
+  };
+
+  const chatDriver = () => {
+    if (!order.driver) return;
+    (navigation as unknown as NativeStackNavigationProp<any>).navigate('Chat', {
+      orderId: order.id,
+      contactName: order.driver,
+      myRole: 'customer',
+      myName: user?.name ?? 'Customer',
+    });
   };
 
   const lat = order.deliveryLat ?? DEFAULT_LAT;
@@ -173,6 +198,19 @@ export default function TrackOrderScreen() {
     Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`).catch(
       () => undefined
     );
+  };
+
+  const bookedFromHome =
+    order.pickupType != null
+      ? order.pickupType === 'home'
+      : !!order.laundromatAddress && order.deliveryAddress === order.laundromatAddress;
+
+  const etaLabel = bookedFromHome ? 'Estimated pickup' : 'Estimated delivery';
+  const etaWindow = bookedFromHome ? order.pickupWindow : order.deliveryWindow;
+  const etaWindowTime = etaWindow.split(' · ').pop() ?? etaWindow;
+
+  const openOrderDetails = () => {
+    navigation.navigate('OrderDetails', { order });
   };
 
   return (
@@ -234,7 +272,11 @@ export default function TrackOrderScreen() {
           </View>
         )}
 
-        <View style={styles.orderCard}>
+        <TouchableOpacity
+          style={styles.orderCard}
+          activeOpacity={0.9}
+          onPress={openOrderDetails}
+        >
           <View style={[styles.orderIcon, { backgroundColor: statusTint[order.status] }]}>
             <MaterialCommunityIcons
               name={statusIcon[order.status]}
@@ -259,7 +301,7 @@ export default function TrackOrderScreen() {
             </View>
             <Text style={styles.orderTotal}>{formatMoney(order.total)}</Text>
           </View>
-        </View>
+        </TouchableOpacity>
 
         <TouchableOpacity activeOpacity={0.92} onPress={openMaps}>
           <View style={styles.mapCard}>
@@ -281,7 +323,7 @@ export default function TrackOrderScreen() {
               <View style={styles.mapEtaBadge}>
                 <MaterialCommunityIcons name="clock-fast" size={13} color={GREEN_DARK} />
                 <Text style={styles.mapEtaText}>
-                  {isDelivered ? 'Delivered' : '1:00 PM – 3:00 PM'}
+                  {isDelivered ? 'Delivered' : etaWindowTime}
                 </Text>
               </View>
               <Text style={styles.mapAttribution}>© OpenStreetMap contributors</Text>
@@ -352,7 +394,7 @@ export default function TrackOrderScreen() {
                   </Text>
                   {isCurrent && (
                     <Text style={styles.timelineHint}>
-                      {isDelivered ? 'Delivered' : 'Your laundry is on the move'}
+                      {statusHint[order.status]}
                     </Text>
                   )}
                 </View>
@@ -381,20 +423,29 @@ export default function TrackOrderScreen() {
               </LinearGradient>
             </TouchableOpacity>
           )}
+          {!!order.driver && (
+            <TouchableOpacity style={styles.chatButtonWrap} activeOpacity={0.9} onPress={chatDriver}>
+              <LinearGradient colors={GRADIENT_VIBRANT} style={styles.chatButton}>
+                <View style={styles.shine} />
+                <MaterialCommunityIcons name="chat-outline" size={16} color={WHITE} />
+                <Text style={styles.chatButtonText}>Chat</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          )}
         </View>
 
-        <View style={styles.etaRow}>
+        <TouchableOpacity style={styles.etaRow} activeOpacity={0.9} onPress={openOrderDetails}>
           <View style={styles.etaIcon}>
             <MaterialCommunityIcons name="clock-fast" size={24} color={AMBER} />
           </View>
           <View style={styles.etaBody}>
-            <Text style={styles.etaLabel}>Estimated delivery</Text>
+            <Text style={styles.etaLabel}>{etaLabel}</Text>
             <Text style={styles.etaValue}>
-              {isDelivered ? 'Delivered' : 'Today, 1:00 PM – 3:00 PM'}
+              {isDelivered ? 'Delivered' : etaWindow}
             </Text>
           </View>
           <MaterialCommunityIcons name="chevron-right" size={22} color={TEXT_MUTED} />
-        </View>
+        </TouchableOpacity>
 
         <TouchableOpacity style={styles.helpRow} onPress={() => navigation.navigate('Support')}>
           <View style={styles.helpIcon}>
@@ -481,9 +532,10 @@ const styles = StyleSheet.create({
     backgroundColor: BG,
   },
   container: {
-    paddingHorizontal: 20,
+    paddingHorizontal: isWeb ? 32 : 20,
     paddingTop: 14,
     paddingBottom: 110,
+    ...(isWeb ? { maxWidth: 600, alignSelf: 'center', width: '100%' } : {}),
   },
   sectionLabel: {
     fontFamily: 'Poppins_600SemiBold',
@@ -747,6 +799,7 @@ const styles = StyleSheet.create({
   driverCard: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
     backgroundColor: WHITE,
     borderRadius: 20,
     borderWidth: 1,
@@ -805,6 +858,29 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   callButtonText: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 13,
+    color: WHITE,
+    marginLeft: 6,
+  },
+  chatButtonWrap: {
+    borderRadius: 22,
+    marginLeft: 8,
+    elevation: 2,
+    shadowColor: '#7857FF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+  },
+  chatButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 22,
+    overflow: 'hidden',
+  },
+  chatButtonText: {
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 13,
     color: WHITE,

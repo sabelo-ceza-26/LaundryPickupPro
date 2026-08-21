@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   Alert,
   Linking,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -22,6 +23,10 @@ import {
 } from '@expo-google-fonts/poppins';
 
 import BookingHeader from '../../components/BookingHeader';
+import { useOrders } from '../../context/OrdersContext';
+import { useSupport } from '../../context/SupportContext';
+import { useAuth } from '../../hooks/useAuth';
+import { isOrderActive } from '../../data/orders';
 import type { CustomerStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<CustomerStackParamList, 'Support'>;
@@ -62,6 +67,8 @@ const SUPPORT_PHONE = '+27108765432';
 const SUPPORT_WHATSAPP = '27829876543';
 const SUPPORT_EMAIL = 'support@laundrypickuppro.app';
 
+const isWeb = Platform.OS === 'web';
+
 const faqs: FaqItem[] = [
   {
     question: 'How do I book a laundry pickup?',
@@ -91,6 +98,9 @@ const faqs: FaqItem[] = [
 ];
 
 export default function SupportScreen({ navigation }: Props) {
+  const { orders } = useOrders();
+  const { addMessage } = useSupport();
+  const { user } = useAuth();
   const [fontsLoaded] = useFonts({
     Poppins_400Regular,
     Poppins_500Medium,
@@ -102,6 +112,10 @@ export default function SupportScreen({ navigation }: Props) {
   const [message, setMessage] = useState('');
 
   if (!fontsLoaded) return null;
+
+  const activeOrderWithDriver = orders.find(
+    (o) => isOrderActive(o.status) && o.driver
+  );
 
   const channels: ContactChannel[] = [
     {
@@ -135,28 +149,38 @@ export default function SupportScreen({ navigation }: Props) {
   ];
 
   const handleSubmit = async () => {
+    if (!user || user.role !== 'customer') {
+      Alert.alert(
+        'Sign in required',
+        'Only registered customers can send support messages. Please sign in to your account.'
+      );
+      return;
+    }
     if (!subject.trim() || !message.trim()) {
       Alert.alert('Missing details', 'Please add a subject and a message.');
       return;
     }
-    const body = encodeURIComponent(`${subject.trim()}\n\n${message.trim()}`);
-    const url = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(
-      'App problem report'
-    )}&body=${body}`;
     try {
-      await Linking.openURL(url);
-      Alert.alert(
-        'Message sent',
-        'Thanks! Our support team will get back to you within 24 hours.'
-      );
-      setSubject('');
-      setMessage('');
+      await addMessage({
+        customerId: user.id,
+        customerName: user.name,
+        customerEmail: user.email,
+        subject: subject.trim(),
+        message: message.trim(),
+      });
     } catch {
       Alert.alert(
-        'Could not open email',
-        `Please email us directly at ${SUPPORT_EMAIL}.`
+        'Could not send message',
+        'Something went wrong. Please try again.'
       );
+      return;
     }
+    Alert.alert(
+      'Message sent',
+      'Thanks! Our support team will get back to you within 24 hours.'
+    );
+    setSubject('');
+    setMessage('');
   };
 
   return (
@@ -169,6 +193,45 @@ export default function SupportScreen({ navigation }: Props) {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
+        {activeOrderWithDriver && (
+          <View style={styles.driverCard}>
+            <LinearGradient
+              colors={['#7857FF', '#5334E0']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.driverCardBg}
+            >
+              <View style={styles.driverShine} />
+              <View style={styles.driverIconWrap}>
+                <MaterialCommunityIcons name="account-circle-outline" size={28} color={WHITE} />
+              </View>
+              <View style={styles.driverBody}>
+                <Text style={styles.driverLabel}>Your driver</Text>
+                <Text style={styles.driverName}>{activeOrderWithDriver.driver}</Text>
+                <Text style={styles.driverOrder}>
+                  {activeOrderWithDriver.reference} · {activeOrderWithDriver.status}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.driverChatBtn}
+                activeOpacity={0.85}
+                onPress={() =>
+                  navigation.navigate('Chat', {
+                    orderId: activeOrderWithDriver.id,
+                    contactName: activeOrderWithDriver.driver!,
+                    myRole: 'customer',
+                    myName: user?.name ?? 'Customer',
+                  })
+                }
+              >
+                <MaterialCommunityIcons name="chat-outline" size={18} color="#7857FF" />
+                <Text style={styles.driverChatBtnText}>Chat</Text>
+              </TouchableOpacity>
+            </LinearGradient>
+          </View>
+        )}
+
+        <Text style={styles.sectionTitle}>Contact us</Text>
         <View style={styles.channelRow}>
           {channels.map((channel) => (
             <TouchableOpacity
@@ -275,9 +338,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#F7F9FB',
   },
   container: {
-    paddingHorizontal: 20,
+    paddingHorizontal: isWeb ? 32 : 20,
     paddingTop: 8,
     paddingBottom: 40,
+    ...(isWeb ? { maxWidth: 600, alignSelf: 'center', width: '100%' } : {}),
   },
   channelRow: {
     flexDirection: 'row',
@@ -323,6 +387,78 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: SECTION,
     marginBottom: 10,
+  },
+  driverCard: {
+    borderRadius: 20,
+    marginBottom: 20,
+    overflow: 'hidden',
+    elevation: 6,
+    shadowColor: '#7857FF',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 14,
+  },
+  driverCardBg: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  driverShine: {
+    position: 'absolute',
+    top: -30,
+    left: -30,
+    width: 90,
+    height: 120,
+    borderRadius: 45,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    transform: [{ rotate: '20deg' }],
+  },
+  driverIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  driverBody: {
+    flex: 1,
+  },
+  driverLabel: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 10,
+    color: 'rgba(255, 255, 255, 0.7)',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  driverName: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 15,
+    color: WHITE,
+    marginTop: 1,
+  },
+  driverOrder: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.75)',
+    marginTop: 2,
+  },
+  driverChatBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: WHITE,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 14,
+  },
+  driverChatBtnText: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 13,
+    color: '#7857FF',
+    marginLeft: 6,
   },
   faqCard: {
     backgroundColor: WHITE,

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -21,6 +22,8 @@ import {
 import BookingHeader from '../../components/BookingHeader';
 import { useBooking } from '../../context/BookingContext';
 import { useOrders } from '../../context/OrdersContext';
+import { useAdmin } from '../../context/AdminContext';
+import type { AdminOrder } from '../../context/AdminContext';
 import type { BookingStackParamList } from '../../navigation/BookingNavigator';
 import { colors } from '../../theme/colors';
 import { formatBookingDate, formatMoney, formatTimeWindow } from '../../utils/format';
@@ -35,9 +38,12 @@ const GRADIENT_CHECK = ['#17879B', '#0E5E73'] as const;
 const GRADIENT_SUMMARY = ['#17879B', '#0E5E73'] as const;
 const GRADIENT_NEXT = ['#17879B', '#0E5E73'] as const;
 
+const isWeb = Platform.OS === 'web';
+
 export default function BookingSuccessScreen({ navigation }: Props) {
   const { booking, resetBooking } = useBooking();
   const { addOrder } = useOrders();
+  const { addOrder: addAdminOrder } = useAdmin();
   const [reference] = useState(
     () => `LPP-${Math.floor(100000 + Math.random() * 900000)}`
   );
@@ -51,30 +57,65 @@ export default function BookingSuccessScreen({ navigation }: Props) {
   if (!fontsLoaded) return null;
 
   const handleDone = () => {
+    const orderId = `ord-${Date.now()}`;
+    const now = new Date();
+    const placedAt = now.toLocaleString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    const pickupDateStr = formatBookingDate(booking.pickupDate);
+    const pickupTimeStr = formatTimeWindow(booking.pickupTime);
+    const deliveryDateStr = formatBookingDate(booking.deliveryDate);
+    const deliveryTimeStr = formatTimeWindow(booking.deliveryTime);
+    const serviceSubtotal = booking.total - booking.deliveryFee;
+
     addOrder({
-      id: `ord-${Date.now()}`,
+      id: orderId,
       reference,
       service: 'Pickup & Drop Off',
       status: 'Scheduled',
-      placedAt: new Date().toLocaleString('en-US', {
-        weekday: 'short',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      }),
+      placedAt,
       pickupAddress: booking.pickupAddress,
       deliveryAddress: booking.deliveryAddress,
-      pickupWindow: `${formatBookingDate(booking.pickupDate)} · ${formatTimeWindow(booking.pickupTime)}`,
-      deliveryWindow: `${formatBookingDate(booking.deliveryDate)} · ${formatTimeWindow(booking.deliveryTime)}`,
+      pickupWindow: `${pickupDateStr} · ${pickupTimeStr}`,
+      deliveryWindow: `${deliveryDateStr} · ${deliveryTimeStr}`,
+      pickupType: booking.pickupType,
       driver: undefined,
       driverPhone: undefined,
-      items: [{ name: 'Wash & Fold (per kg)', quantity: 1, price: booking.total }],
-      deliveryFee: 0,
+      items: [{ name: `${booking.bagCount} ${booking.bagCount === 1 ? 'Bag' : 'Bags'}`, quantity: 1, price: serviceSubtotal }],
+      deliveryFee: booking.deliveryFee,
       total: booking.total,
       paymentMethod: booking.paymentMethod,
       instructions: booking.instructions,
+      laundromat: booking.assignedLaundromat?.name,
+      laundromatAddress: booking.assignedLaundromat?.address,
     });
+
+    const adminOrder: AdminOrder = {
+      id: `#SUD-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${String(Math.floor(1000 + Math.random() * 9000))}`,
+      customerName: 'Customer',
+      customerPhone: '',
+      pickupAddress: booking.pickupAddress,
+      deliveryAddress: booking.deliveryAddress,
+      pickupDate: pickupDateStr,
+      pickupTime: pickupTimeStr,
+      driver: '',
+      driverPhone: '',
+      status: 'Pending',
+      placedAt,
+      placedAtISO: now.toISOString(),
+      items: [{ name: `${booking.bagCount} ${booking.bagCount === 1 ? 'Bag' : 'Bags'}`, quantity: 1, price: serviceSubtotal }],
+      deliveryFee: booking.deliveryFee,
+      paymentMethod: booking.paymentMethod,
+      instructions: booking.instructions,
+      laundromat: booking.assignedLaundromat?.name,
+      laundromatAddress: booking.assignedLaundromat?.address,
+    };
+    addAdminOrder(adminOrder);
+
     resetBooking();
     navigation.getParent()?.navigate('Home');
     navigation.popToTop();
@@ -135,6 +176,12 @@ export default function BookingSuccessScreen({ navigation }: Props) {
               {formatTimeWindow(booking.deliveryTime)}
             </Text>
           </View>
+          {booking.assignedLaundromat && (
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Laundromat</Text>
+              <Text style={styles.summaryValue}>{booking.assignedLaundromat.name}</Text>
+            </View>
+          )}
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Payment</Text>
             <Text style={styles.summaryValue}>{booking.paymentMethod}</Text>
@@ -192,9 +239,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#F7F9FB',
   },
   container: {
-    paddingHorizontal: 20,
+    paddingHorizontal: isWeb ? 32 : 20,
     paddingTop: 32,
     paddingBottom: 24,
+    ...(isWeb ? { maxWidth: 600, alignSelf: 'center', width: '100%' } : {}),
   },
   hero: {
     alignItems: 'center',

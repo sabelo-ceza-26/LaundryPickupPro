@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -28,11 +29,13 @@ type Props = NativeStackScreenProps<AdminStackParamList, 'Login'>;
 
 const TEXT_DARK = '#1F2933';
 const TEXT_MUTED = '#7A869A';
-const BORDER = '#E8ECF1';
 const WHITE = '#FFFFFF';
 const BLUE = '#2E6BFF';
 const PURPLE = '#7857FF';
+const BORDER = '#E8ECF1';
 const DANGER = '#E5484D';
+
+const isWeb = Platform.OS === 'web';
 
 const GRADIENT_HEADER = [BLUE, PURPLE] as const;
 
@@ -248,7 +251,7 @@ const styles = StyleSheet.create({
     lineHeight: 19,
   },
   formCard: {
-    marginHorizontal: 20,
+    marginHorizontal: isWeb ? 'auto' : 20,
     marginTop: 24,
     backgroundColor: WHITE,
     borderRadius: 24,
@@ -260,6 +263,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.08,
     shadowRadius: 14,
+    ...(isWeb ? { maxWidth: 440, width: '100%' } : {}),
   },
   inputLabel: {
     fontFamily: 'Poppins_500Medium',

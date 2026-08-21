@@ -97,12 +97,8 @@ const PRICING_FIELDS: {
   hint: string;
   suffix: string;
 }[] = [
-  { key: 'smallLoad', label: '0–5 kg', hint: 'Per kilogram', suffix: '/kg' },
-  { key: 'mediumLoad', label: '5–10 kg', hint: 'Per kilogram', suffix: '/kg' },
-  { key: 'largeLoad', label: '10+ kg', hint: 'Per kilogram', suffix: '/kg' },
-  { key: 'bag', label: 'Standard bag', hint: 'Up to 10 kg per bag', suffix: 'per bag' },
-  { key: 'delivery', label: 'Pickup & delivery', hint: 'Per trip', suffix: 'per trip' },
-  { key: 'express', label: 'Express (same-day)', hint: 'Flat add-on', suffix: 'per order' },
+  { key: 'delivery', label: 'Delivery Fee', hint: 'Flat fee for pickup & delivery', suffix: 'per trip' },
+  { key: 'express', label: 'Distance Rate', hint: 'Per kilometer between pickup and delivery', suffix: '/km' },
 ];
 
 type SettingsModalProps = {
@@ -266,6 +262,8 @@ function PricingSettingsModal({
   );
 }
 
+const isWeb = Platform.OS === 'web';
+
 export default function PaymentScreen({ navigation }: Props) {
   const { pricing, updatePricing } = useAdmin();
   const [settingsVisible, setSettingsVisible] = useState(false);
@@ -321,64 +319,12 @@ export default function PaymentScreen({ navigation }: Props) {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.sectionHeadingRow}>
-          <Text style={styles.sectionHeading}>Price per kg</Text>
+          <Text style={styles.sectionHeading}>Pickup &amp; Delivery Pricing</Text>
         </View>
 
         <ServiceItem
-          title="0–5 kg"
-          subtitle="Price for laundry up to 5kg"
-          price={`R${pricing.smallLoad.price} / kg`}
-          enabled={pricing.smallLoad.enabled}
-          icon="scale-balance"
-          tint={BLUE_TINT}
-          color={BLUE}
-          onToggle={() => togglePrice('smallLoad')}
-        />
-
-        <ServiceItem
-          title="5kg–10 kg"
-          subtitle="Price for laundry between 5kg–10kg"
-          price={`R${pricing.mediumLoad.price} / kg`}
-          enabled={pricing.mediumLoad.enabled}
-          icon="weight-kilogram"
-          tint="#EFEBFF"
-          color={PURPLE}
-          onToggle={() => togglePrice('mediumLoad')}
-        />
-
-        <ServiceItem
-          title="10+ kg"
-          subtitle="Price for laundry above 10kg"
-          price={`R${pricing.largeLoad.price} / kg`}
-          enabled={pricing.largeLoad.enabled}
-          icon="scale"
-          tint="#D6F0F4"
-          color="#0E9AA7"
-          onToggle={() => togglePrice('largeLoad')}
-        />
-
-        <View style={styles.sectionHeadingRow}>
-          <Text style={styles.sectionHeading}>Price per bag</Text>
-        </View>
-
-        <ServiceItem
-          title="Per laundry bag"
-          subtitle="Up to 10 kg per bag"
-          price={`R${pricing.bag.price}`}
-          enabled={pricing.bag.enabled}
-          icon="shopping-outline"
-          tint="#DDF8E8"
-          color="#00A85A"
-          onToggle={() => togglePrice('bag')}
-        />
-
-        <View style={styles.sectionHeadingRow}>
-          <Text style={styles.sectionHeading}>Pickup &amp; delivery fee</Text>
-        </View>
-
-        <ServiceItem
-          title="Pickup &amp; Drop off"
-          subtitle="For collection and drop off"
+          title="Delivery Fee"
+          subtitle="Flat fee for pickup and delivery"
           price={`R${pricing.delivery.price}`}
           enabled={pricing.delivery.enabled}
           icon="truck-delivery-outline"
@@ -387,18 +333,14 @@ export default function PaymentScreen({ navigation }: Props) {
           onToggle={() => togglePrice('delivery')}
         />
 
-        <View style={styles.sectionHeadingRow}>
-          <Text style={styles.sectionHeading}>Express</Text>
-        </View>
-
         <ServiceItem
-          title="Same-day express"
-          subtitle="Rush processing with guaranteed delivery"
-          price={`R${pricing.express.price}`}
+          title="Distance Rate"
+          subtitle="Per kilometer between pickup and delivery"
+          price={`R${pricing.express.price} / km`}
           enabled={pricing.express.enabled}
-          icon="lightning-bolt-outline"
-          tint="#FFE8EF"
-          color="#EC5E9B"
+          icon="map-marker-distance"
+          tint="#E4EEFF"
+          color={BLUE}
           onToggle={() => togglePrice('express')}
         />
       </ScrollView>
@@ -466,8 +408,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F7FA',
   },
   container: {
-    paddingHorizontal: 20,
+    paddingHorizontal: isWeb ? 32 : 20,
     paddingBottom: 40,
+    ...(isWeb ? { maxWidth: 700, alignSelf: 'center', width: '100%' } : {}),
   },
   sectionHeadingRow: {
     marginTop: 6,

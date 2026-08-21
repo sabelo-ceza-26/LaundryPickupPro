@@ -1,351 +1,349 @@
 import React, { useState } from 'react';
 import {
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import {
+  useFonts,
+  Poppins_400Regular,
+  Poppins_500Medium,
+  Poppins_600SemiBold,
+  Poppins_700Bold,
+} from '@expo-google-fonts/poppins';
 
-type Message = {
-    id: number;
-    text: string;
-    from: 'me' | 'them';
-    time: string;
-};
+import type { DriverStackParamList } from '../../navigation/DriverNavigator';
+import { useAuth } from '../../hooks/useAuth';
+import { useDriverOrders } from '../../context/DriverOrdersContext';
+import { useChat } from '../../context/ChatContext';
 
-const initialMessages: Message[] = [
-    {
-        id: 1,
-        text: 'Hi Andiswa, I am on my way to collect your laundry.',
-        from: 'me',
-        time: '10:02 AM',
-    },
-    {
-        id: 2,
-        text: 'Great! I have the bags ready on the front porch.',
-        from: 'them',
-        time: '10:05 AM',
-    },
-    {
-        id: 3,
-        text: 'Perfect, I will let you know when I arrive.',
-        from: 'me',
-        time: '10:06 AM',
-    },
-];
+const TEXT_DARK = '#1F2933';
+const TEXT_MUTED = '#7A869A';
+const WHITE = '#FFFFFF';
+const BLUE = '#2E6BFF';
+const BLUE_TINT = '#E4EEFF';
+const PURPLE = '#7857FF';
+const PURPLE_TINT = '#EFEBFF';
+const BORDER = '#E8ECF1';
 
-const CONTACT_NAME = 'Andiswa Gumede';
-const CONTACT_STATUS = 'Online';
+const isWeb = Platform.OS === 'web';
 
-export default function ChatScreen() {
-    const [messages, setMessages] =
-        useState<Message[]>(initialMessages);
-    const [input, setInput] = useState('');
+type Props = NativeStackScreenProps<DriverStackParamList, 'Chat'>;
 
-    const getCurrentTime = () => {
-        const now = new Date();
-        let hours = now.getHours();
-        const minutes = now.getMinutes().toString().padStart(2, '0');
-        const suffix = hours >= 12 ? 'PM' : 'AM';
+export default function ChatScreen({ navigation }: Props) {
+  const { user } = useAuth();
+  const { orders } = useDriverOrders();
+  const { messages: allMessages } = useChat();
+  const [searchText, setSearchText] = useState('');
 
-        hours = hours % 12 || 12;
+  const [fontsLoaded] = useFonts({
+    Poppins_400Regular,
+    Poppins_500Medium,
+    Poppins_600SemiBold,
+    Poppins_700Bold,
+  });
 
-        return `${hours}:${minutes} ${suffix}`;
-    };
+  if (!fontsLoaded) return null;
 
-    const sendMessage = () => {
-        const text = input.trim();
+  const myOrders = orders.filter(
+    (order) => order.driver && order.driver === user?.name
+  );
 
-        if (!text) {
-            return;
-        }
+  const query = searchText.trim().toLowerCase();
+  const conversations = myOrders
+    .filter(
+      (order) =>
+        !query ||
+        order.customer.toLowerCase().includes(query) ||
+        order.orderNumber.toLowerCase().includes(query)
+    )
+    .map((order) => {
+      const orderMessages = allMessages[order.orderNumber] ?? [];
+      const lastMessage =
+        orderMessages.length > 0
+          ? orderMessages[orderMessages.length - 1]
+          : null;
+      return { order, lastMessage };
+    });
 
-        setMessages((prev) => [
-            ...prev,
-            {
-                id: prev.length + 1,
-                text,
-                from: 'me',
-                time: getCurrentTime(),
-            },
-        ]);
-        setInput('');
-    };
+  const openConversation = (orderNumber: string, customerName: string) => {
+    navigation.navigate('ChatScreen', {
+      orderId: orderNumber,
+      contactName: customerName,
+      myRole: 'driver',
+      myName: user?.name ?? 'Driver',
+    });
+  };
 
-    return (
-        <SafeAreaView style={styles.safeArea}>
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.header}>
+        <View style={styles.decorCircleOne} />
+        <View style={styles.decorCircleTwo} />
+        <Text style={styles.headerTitle}>Chats</Text>
+        <Text style={styles.headerSubtitle}>
+          Talk to customers about their orders
+        </Text>
+      </View>
 
-            {/* Header */}
-            <View style={styles.header}>
+      {conversations.length > 0 && (
+        <View style={styles.searchContainer}>
+          <MaterialCommunityIcons name="magnify" size={20} color={TEXT_MUTED} />
+          <TextInput
+            placeholder="Search by customer or order"
+            placeholderTextColor={TEXT_MUTED}
+            style={styles.searchInput}
+            value={searchText}
+            onChangeText={setSearchText}
+          />
+        </View>
+      )}
 
-                <View style={styles.avatar}>
-                    <Text style={styles.avatarText}>
-                        {CONTACT_NAME.charAt(0)}
-                    </Text>
-                </View>
-
-                <View style={styles.headerInfo}>
-
-                    <Text style={styles.headerName}>
-                        {CONTACT_NAME}
-                    </Text>
-
-                    <Text style={styles.headerStatus}>
-                        {CONTACT_STATUS}
-                    </Text>
-
-                </View>
-
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+      >
+        {conversations.length === 0 ? (
+          <View style={styles.emptyWrap}>
+            <View style={styles.emptyIconWrap}>
+              <MaterialCommunityIcons
+                name="chat-remove-outline"
+                size={40}
+                color={PURPLE}
+              />
             </View>
-
-            {/* Messages */}
-            <KeyboardAvoidingView
-                style={styles.flex}
-                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                keyboardVerticalOffset={0}
-            >
-
-                <ScrollView
-                    style={styles.flex}
-                    contentContainerStyle={styles.messagesContainer}
-                    ref={(ref) => {
-                        ref?.scrollToEnd({ animated: false });
-                    }}
-                >
-
-                    {messages.map((message) => {
-                        const isMine = message.from === 'me';
-
-                        return (
-                            <View
-                                key={message.id}
-                                style={[
-                                    styles.messageRow,
-                                    isMine
-                                        ? styles.messageRowMine
-                                        : styles.messageRowTheirs,
-                                ]}
-                            >
-                                <View
-                                    style={[
-                                        styles.bubble,
-                                        isMine
-                                            ? styles.bubbleMine
-                                            : styles.bubbleTheirs,
-                                    ]}
-                                >
-                                    <Text
-                                        style={[
-                                            styles.messageText,
-                                            isMine
-                                                ? styles.messageTextMine
-                                                : styles.messageTextTheirs,
-                                        ]}
-                                    >
-                                        {message.text}
-                                    </Text>
-                                    <Text
-                                        style={[
-                                            styles.messageTime,
-                                            isMine
-                                                ? styles.messageTimeMine
-                                                : styles.messageTimeTheirs,
-                                        ]}
-                                    >
-                                        {message.time}
-                                    </Text>
-                                </View>
-                            </View>
-                        );
-                    })}
-
-                </ScrollView>
-
-                {/* Input Bar */}
-                <View style={styles.inputBar}>
-
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Type a message..."
-                        placeholderTextColor="#8E8E93"
-                        value={input}
-                        onChangeText={setInput}
-                        multiline
-                        onSubmitEditing={sendMessage}
-                    />
-
-                    <TouchableOpacity
-                        style={styles.sendButton}
-                        onPress={sendMessage}
-                        disabled={!input.trim()}
-                    >
-                        <Ionicons
-                            name="send"
-                            size={18}
-                            color="#FFFFFF"
-                        />
-                    </TouchableOpacity>
-
+            <Text style={styles.emptyTitle}>No customers to chat with</Text>
+            <Text style={styles.emptySubtitle}>
+              Chat unlocks once an order is assigned to you. When admin assigns
+              you an order, you can message that customer about it here.
+            </Text>
+          </View>
+        ) : (
+          conversations.map(({ order, lastMessage }) => {
+            const initial = order.customer.charAt(0).toUpperCase();
+            const preview = lastMessage
+              ? `${lastMessage.senderRole === 'driver' ? 'You: ' : ''}${lastMessage.text}`
+              : 'No messages yet — say hello!';
+            return (
+              <TouchableOpacity
+                key={order.id}
+                style={styles.conversationCard}
+                activeOpacity={0.85}
+                onPress={() =>
+                  openConversation(order.orderNumber, order.customer)
+                }
+              >
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>{initial}</Text>
+                  <View style={styles.onlineDot} />
                 </View>
 
-            </KeyboardAvoidingView>
+                <View style={styles.conversationBody}>
+                  <View style={styles.conversationTopRow}>
+                    <Text style={styles.customerName} numberOfLines={1}>
+                      {order.customer}
+                    </Text>
+                    <Text style={styles.orderPill}>{order.orderNumber}</Text>
+                  </View>
+                  <Text style={styles.preview} numberOfLines={1}>
+                    {preview}
+                  </Text>
+                  <Text style={styles.orderMeta} numberOfLines={1}>
+                    {order.type} · {order.address}
+                  </Text>
+                </View>
 
-        </SafeAreaView>
-    );
+                <MaterialCommunityIcons
+                  name="chevron-right"
+                  size={22}
+                  color="#B9BEC7"
+                />
+              </TouchableOpacity>
+            );
+          })
+        )}
+      </ScrollView>
+    </SafeAreaView>
+  );
 }
 
 const styles = StyleSheet.create({
-
-    safeArea: {
-        flex: 1,
-        backgroundColor: '#F5F7FA',
-    },
-
-    flex: {
-        flex: 1,
-    },
-
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#FFFFFF',
-        paddingHorizontal: 20,
-        paddingVertical: 14,
-        borderBottomWidth: 1,
-        borderBottomColor: '#E8ECF1',
-    },
-
-    avatar: {
-        width: 42,
-        height: 42,
-        borderRadius: 21,
-        backgroundColor: '#173D8F',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 12,
-    },
-
-    avatarText: {
-        color: '#FFFFFF',
-        fontSize: 18,
-        fontWeight: '700',
-    },
-
-    headerInfo: {
-        flex: 1,
-    },
-
-    headerName: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: '#12263A',
-    },
-
-    headerStatus: {
-        marginTop: 2,
-        fontSize: 12,
-        color: '#16A34A',
-        fontWeight: '600',
-    },
-
-    messagesContainer: {
-        padding: 16,
-    },
-
-    messageRow: {
-        marginBottom: 12,
-        flexDirection: 'row',
-    },
-
-    messageRowMine: {
-        justifyContent: 'flex-end',
-    },
-
-    messageRowTheirs: {
-        justifyContent: 'flex-start',
-    },
-
-    bubble: {
-        maxWidth: '78%',
-        borderRadius: 16,
-        paddingHorizontal: 14,
-        paddingVertical: 10,
-    },
-
-    bubbleMine: {
-        backgroundColor: '#173D8F',
-        borderBottomRightRadius: 4,
-    },
-
-    bubbleTheirs: {
-        backgroundColor: '#FFFFFF',
-        borderBottomLeftRadius: 4,
-        elevation: 1,
-    },
-
-    messageText: {
-        fontSize: 14,
-        lineHeight: 20,
-    },
-
-    messageTextMine: {
-        color: '#FFFFFF',
-    },
-
-    messageTextTheirs: {
-        color: '#12263A',
-    },
-
-    messageTime: {
-        marginTop: 4,
-        fontSize: 10,
-        alignSelf: 'flex-end',
-    },
-
-    messageTimeMine: {
-        color: '#C9D6F0',
-    },
-
-    messageTimeTheirs: {
-        color: '#8E8E93',
-    },
-
-    inputBar: {
-        flexDirection: 'row',
-        alignItems: 'flex-end',
-        backgroundColor: '#FFFFFF',
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-        borderTopWidth: 1,
-        borderTopColor: '#E8ECF1',
-    },
-
-    input: {
-        flex: 1,
-        backgroundColor: '#F1F3F6',
-        borderRadius: 20,
-        paddingHorizontal: 16,
-        paddingTop: 10,
-        paddingBottom: 10,
-        maxHeight: 100,
-        fontSize: 14,
-        color: '#12263A',
-    },
-
-    sendButton: {
-        width: 42,
-        height: 42,
-        borderRadius: 21,
-        backgroundColor: '#173D8F',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginLeft: 10,
-    },
-
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#F5F7FA',
+  },
+  header: {
+    backgroundColor: WHITE,
+    paddingHorizontal: isWeb ? 32 : 20,
+    paddingTop: 18,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
+    overflow: 'hidden',
+  },
+  decorCircleOne: {
+    position: 'absolute',
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: PURPLE_TINT,
+    top: -60,
+    right: -30,
+  },
+  decorCircleTwo: {
+    position: 'absolute',
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: BLUE_TINT,
+    bottom: -40,
+    left: -20,
+  },
+  headerTitle: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 22,
+    color: TEXT_DARK,
+  },
+  headerSubtitle: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 13,
+    color: TEXT_MUTED,
+    marginTop: 2,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: WHITE,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: BORDER,
+    paddingHorizontal: 14,
+    height: 44,
+    marginHorizontal: isWeb ? 32 : 16,
+    marginTop: 14,
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: 8,
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 13,
+    color: TEXT_DARK,
+  },
+  scroll: {
+    flex: 1,
+  },
+  container: {
+    paddingHorizontal: isWeb ? 32 : 16,
+    paddingVertical: 14,
+    paddingBottom: 30,
+  },
+  emptyWrap: {
+    alignItems: 'center',
+    paddingTop: 80,
+    paddingHorizontal: 36,
+  },
+  emptyIconWrap: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: PURPLE_TINT,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyTitle: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 17,
+    color: TEXT_DARK,
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  emptySubtitle: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 13,
+    color: TEXT_MUTED,
+    marginTop: 8,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  conversationCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: WHITE,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: BORDER,
+    padding: 14,
+    marginBottom: 12,
+  },
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: PURPLE,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  avatarText: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 18,
+    color: WHITE,
+  },
+  onlineDot: {
+    position: 'absolute',
+    bottom: 1,
+    right: 1,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#00A85A',
+    borderWidth: 2,
+    borderColor: WHITE,
+  },
+  conversationBody: {
+    flex: 1,
+    marginRight: 8,
+  },
+  conversationTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  customerName: {
+    flex: 1,
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 15,
+    color: TEXT_DARK,
+    marginRight: 8,
+  },
+  orderPill: {
+    fontFamily: 'Poppins_500Medium',
+    fontSize: 10,
+    color: BLUE,
+    backgroundColor: BLUE_TINT,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    overflow: 'hidden',
+  },
+  preview: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 13,
+    color: TEXT_MUTED,
+    marginTop: 3,
+  },
+  orderMeta: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 11,
+    color: '#B0BAC4',
+    marginTop: 3,
+  },
 });

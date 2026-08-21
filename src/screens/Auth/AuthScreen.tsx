@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   Alert,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -20,9 +21,11 @@ import {
 
 import Button from '../../components/Button';
 import Input from '../../components/Input';
+import CredentialMismatchAlert from '../../components/CredentialMismatchAlert';
 import { useAuth } from '../../hooks/useAuth';
 import type { AuthStackParamList } from '../../navigation/AuthNavigator';
 import * as AuthServices from '../../services/AuthServices';
+import { useAdmin } from '../../context/AdminContext';
 import { colors } from '../../theme/colors';
 import {
   isEmail,
@@ -43,6 +46,8 @@ const BORDER = '#E8ECF1';
 const LIGHT_BLUE = '#E4EEFF';
 const LIGHT_BLUE_ACCENT = '#2E6BFF';
 
+const isWeb = Platform.OS === 'web';
+
 const SEGMENTS: {
   key: Mode;
   label: string;
@@ -50,6 +55,14 @@ const SEGMENTS: {
 }[] = [
   { key: 'login', label: 'Log In', icon: 'login-variant' },
   { key: 'register', label: 'Register', icon: 'account-plus-outline' },
+];
+
+const DRIVER_SEGMENTS: {
+  key: Mode;
+  label: string;
+  icon: keyof typeof MaterialCommunityIcons.glyphMap;
+}[] = [
+  { key: 'login', label: 'Log In', icon: 'login-variant' },
 ];
 
 type RegisterErrors = {
@@ -64,6 +77,7 @@ type RegisterErrors = {
 export default function AuthScreen({ navigation, route }: Props) {
   const { role } = route.params;
   const { signIn } = useAuth();
+  const { validateDriverCredentials } = useAdmin();
   const [fontsLoaded] = useFonts({
     Poppins_400Regular,
     Poppins_500Medium,
@@ -73,12 +87,16 @@ export default function AuthScreen({ navigation, route }: Props) {
 
   const [mode, setMode] = useState<Mode>(route.params.mode ?? 'login');
 
+  const isDriver = role === 'driver';
+  const activeSegments = isDriver ? DRIVER_SEGMENTS : SEGMENTS;
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
+  const [credentialMismatch, setCredentialMismatch] = useState(false);
 
   const [regName, setRegName] = useState('');
   const [regEmail, setRegEmail] = useState('');
@@ -115,8 +133,23 @@ export default function AuthScreen({ navigation, route }: Props) {
 
     setLoginLoading(true);
     try {
-      const user = await AuthServices.login({ role, email, password });
-      signIn(role, user);
+      if (role === 'driver') {
+        const matchedDriver = validateDriverCredentials(email, password);
+        if (!matchedDriver) {
+          setCredentialMismatch(true);
+          setLoginLoading(false);
+          return;
+        }
+        const user = await AuthServices.login({ role, email, password });
+        signIn(role, {
+          ...user,
+          name: matchedDriver.name,
+          phone: matchedDriver.phone,
+        });
+      } else {
+        const user = await AuthServices.login({ role, email, password });
+        signIn(role, user);
+      }
     } catch (error) {
       Alert.alert(
         'Sign in failed',
@@ -208,36 +241,47 @@ export default function AuthScreen({ navigation, route }: Props) {
             {mode === 'login' ? 'Welcome Back!' : 'Create your account'}
           </Text>
 
-          <View style={styles.segment}>
-            {SEGMENTS.map((item) => {
-              const active = mode === item.key;
-              return (
-                <TouchableOpacity
-                  key={item.key}
-                  style={[
-                    styles.segmentItem,
-                    active && styles.segmentItemActive,
-                  ]}
-                  activeOpacity={0.7}
-                  onPress={() => switchMode(item.key)}
-                >
-                  <MaterialCommunityIcons
-                    name={item.icon}
-                    size={18}
-                    color={active ? ACCENT : 'rgba(255, 255, 255, 0.75)'}
-                  />
-                  <Text
+          {activeSegments.length > 1 && (
+            <View style={styles.segment}>
+              {activeSegments.map((item) => {
+                const active = mode === item.key;
+                return (
+                  <TouchableOpacity
+                    key={item.key}
                     style={[
-                      styles.segmentText,
-                      active && styles.segmentTextActive,
+                      styles.segmentItem,
+                      active && styles.segmentItemActive,
                     ]}
+                    activeOpacity={0.7}
+                    onPress={() => switchMode(item.key)}
                   >
-                    {item.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+                    <MaterialCommunityIcons
+                      name={item.icon}
+                      size={18}
+                      color={active ? ACCENT : 'rgba(255, 255, 255, 0.75)'}
+                    />
+                    <Text
+                      style={[
+                        styles.segmentText,
+                        active && styles.segmentTextActive,
+                      ]}
+                    >
+                      {item.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
+
+          {isDriver && (
+            <View style={styles.driverNotice}>
+              <MaterialCommunityIcons name="information-outline" size={14} color="rgba(255,255,255,0.75)" />
+              <Text style={styles.driverNoticeText}>
+                Drivers sign in with credentials provided by your administrator.
+              </Text>
+            </View>
+          )}
         </View>
 
         {mode === 'login' ? (
@@ -422,17 +466,29 @@ export default function AuthScreen({ navigation, route }: Props) {
         )}
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>
-            {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
-            <Text
-              style={styles.footerLink}
-              onPress={() => switchMode(mode === 'login' ? 'register' : 'login')}
-            >
-              {mode === 'login' ? 'Sign Up' : 'Log In'}
+          {!isDriver && (
+            <Text style={styles.footerText}>
+              {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
+              <Text
+                style={styles.footerLink}
+                onPress={() => switchMode(mode === 'login' ? 'register' : 'login')}
+              >
+                {mode === 'login' ? 'Sign Up' : 'Log In'}
+              </Text>
             </Text>
-          </Text>
+          )}
+          {isDriver && (
+            <Text style={styles.footerText}>
+              Drivers are registered by the administrator.
+            </Text>
+          )}
         </View>
       </ScrollView>
+
+      <CredentialMismatchAlert
+        visible={credentialMismatch}
+        onClose={() => setCredentialMismatch(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -475,6 +531,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 30,
+    ...(isWeb ? {
+      maxWidth: 480,
+      alignSelf: 'center',
+      width: '100%',
+    } : {}),
   },
   backButton: {
     width: 44,
@@ -496,6 +557,23 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_700Bold',
     fontSize: 26,
     color: colors.white,
+  },
+  driverNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 8,
+  },
+  driverNoticeText: {
+    flex: 1,
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.85)',
+    lineHeight: 17,
   },
   form: {
     backgroundColor: colors.white,

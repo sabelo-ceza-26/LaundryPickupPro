@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
     Alert,
     Linking,
+    Platform,
     ScrollView,
     StyleSheet,
     Text,
@@ -10,10 +11,34 @@ import {
     View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import {
+    useFonts,
+    Poppins_400Regular,
+    Poppins_500Medium,
+    Poppins_600SemiBold,
+    Poppins_700Bold,
+} from '@expo-google-fonts/poppins';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import type { DriverStackParamList } from '../../navigation/DriverNavigator';
+import BookingHeader from '../../components/BookingHeader';
+
+const TEXT_DARK = '#1F2933';
+const TEXT_MUTED = '#7A869A';
+const WHITE = '#FFFFFF';
+const BLUE = '#2E6BFF';
+const BLUE_TINT = '#E4EEFF';
+const PURPLE = '#7857FF';
+const GREEN = '#00A85A';
+const AMBER = '#F4A928';
+const BORDER = '#E8ECF1';
+const TEAL_HEADING = '#0E7A86';
+
+const GRADIENT_PRIMARY = [BLUE, PURPLE] as const;
+
+const isWeb = Platform.OS === 'web';
 
 type Props = NativeStackScreenProps<
     DriverStackParamList,
@@ -63,16 +88,25 @@ const faqs: FaqItem[] = [
 export default function HelpSupportScreen({
     navigation,
 }: Props) {
+    const [fontsLoaded] = useFonts({
+        Poppins_400Regular,
+        Poppins_500Medium,
+        Poppins_600SemiBold,
+        Poppins_700Bold,
+    });
+
     const [openFaq, setOpenFaq] = useState<number | null>(0);
     const [subject, setSubject] = useState('');
     const [message, setMessage] = useState('');
+
+    if (!fontsLoaded) return null;
 
     const channels: ContactChannel[] = [
         {
             label: 'Call us',
             hint: SUPPORT_PHONE,
             icon: 'phone-outline',
-            color: '#16A34A',
+            color: GREEN,
             onPress: () =>
                 Linking.openURL(`tel:${SUPPORT_PHONE}`).catch(() =>
                     undefined,
@@ -82,7 +116,7 @@ export default function HelpSupportScreen({
             label: 'WhatsApp',
             hint: 'Chat with our team',
             icon: 'whatsapp',
-            color: '#173D8F',
+            color: BLUE,
             onPress: () =>
                 Linking.openURL(
                     `https://wa.me/${SUPPORT_WHATSAPP}?text=${encodeURIComponent(
@@ -94,7 +128,7 @@ export default function HelpSupportScreen({
             label: 'Email us',
             hint: SUPPORT_EMAIL,
             icon: 'email-outline',
-            color: '#F59E0B',
+            color: AMBER,
             onPress: () =>
                 Linking.openURL(
                     `mailto:${SUPPORT_EMAIL}`,
@@ -135,24 +169,16 @@ export default function HelpSupportScreen({
     return (
         <SafeAreaView style={styles.safeArea}>
             <ScrollView
+                style={styles.scroll}
                 contentContainerStyle={styles.container}
+                showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
             >
-
-                {/* Header */}
-                <View style={styles.header}>
-                    <TouchableOpacity onPress={() => navigation.goBack()}>
-                        <Ionicons
-                            name="chevron-back"
-                            size={28}
-                            color="#12263A"
-                        />
-                    </TouchableOpacity>
-                    <Text style={styles.title}>
-                        Help & Support
-                    </Text>
-                    <View style={{ width: 28 }} />
-                </View>
+                <BookingHeader
+                    title="Help & Support"
+                    onBack={() => navigation.goBack()}
+                    showCancelBooking={false}
+                />
 
                 {/* Contact Channels */}
                 <View style={styles.channelRow}>
@@ -213,26 +239,26 @@ export default function HelpSupportScreen({
                                     <View
                                         style={[
                                             styles.faqIcon,
-                                            { backgroundColor: '#E8EFFD' },
+                                            { backgroundColor: BLUE_TINT },
                                         ]}
                                     >
-                                        <Ionicons
+                                        <MaterialCommunityIcons
                                             name="help-circle-outline"
                                             size={18}
-                                            color="#173D8F"
+                                            color={BLUE}
                                         />
                                     </View>
                                     <Text style={styles.faqQuestion}>
                                         {faq.question}
                                     </Text>
-                                    <Ionicons
+                                    <MaterialCommunityIcons
                                         name={
                                             isOpen
                                                 ? 'chevron-up'
                                                 : 'chevron-down'
                                         }
                                         size={20}
-                                        color="#173D8F"
+                                        color={BLUE}
                                     />
                                 </View>
                                 {isOpen && (
@@ -253,10 +279,10 @@ export default function HelpSupportScreen({
                 <View style={styles.card}>
                     <Text style={styles.inputLabel}>Subject</Text>
                     <View style={styles.inputField}>
-                        <Ionicons
-                            name="pricetag-outline"
+                        <MaterialCommunityIcons
+                            name="tag-outline"
                             size={18}
-                            color="#7A8492"
+                            color={TEXT_MUTED}
                         />
                         <TextInput
                             style={styles.input}
@@ -269,10 +295,10 @@ export default function HelpSupportScreen({
 
                     <Text style={styles.inputLabel}>Message</Text>
                     <View style={[styles.inputField, styles.messageField]}>
-                        <Ionicons
-                            name="chatbubble-outline"
+                        <MaterialCommunityIcons
+                            name="chat-outline"
                             size={18}
-                            color="#7A8492"
+                            color={TEXT_MUTED}
                             style={styles.messageIcon}
                         />
                         <TextInput
@@ -291,12 +317,19 @@ export default function HelpSupportScreen({
                         activeOpacity={0.9}
                         onPress={handleSubmit}
                     >
-                        <Text style={styles.submitText}>Send Message</Text>
-                        <Ionicons
-                            name="send"
-                            size={18}
-                            color="#FFFFFF"
-                        />
+                        <LinearGradient
+                            colors={GRADIENT_PRIMARY}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={styles.submitGradient}
+                        >
+                            <Text style={styles.submitText}>Send Message</Text>
+                            <MaterialCommunityIcons
+                                name="send"
+                                size={18}
+                                color={WHITE}
+                            />
+                        </LinearGradient>
                     </TouchableOpacity>
                 </View>
 
@@ -309,25 +342,18 @@ const styles = StyleSheet.create({
 
     safeArea: {
         flex: 1,
+        backgroundColor: WHITE,
+    },
+
+    scroll: {
         backgroundColor: '#F5F7FA',
     },
 
     container: {
-        padding: 20,
+        paddingHorizontal: isWeb ? 32 : 20,
+        paddingVertical: 20,
         paddingBottom: 30,
-    },
-
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 20,
-    },
-
-    title: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: '#12263A',
+        ...(isWeb ? { maxWidth: 600, alignSelf: 'center', width: '100%' } : {}),
     },
 
     channelRow: {
@@ -338,13 +364,17 @@ const styles = StyleSheet.create({
 
     channelCard: {
         width: '31%',
-        backgroundColor: '#FFFFFF',
-        borderRadius: 14,
+        backgroundColor: WHITE,
+        borderRadius: 18,
         borderWidth: 1,
-        borderColor: '#E8ECF1',
+        borderColor: BORDER,
         paddingVertical: 16,
         alignItems: 'center',
         elevation: 2,
+        shadowColor: TEXT_DARK,
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
     },
 
     channelIcon: {
@@ -357,41 +387,43 @@ const styles = StyleSheet.create({
 
     channelLabel: {
         fontSize: 13,
-        fontWeight: '600',
-        color: '#12263A',
+        fontFamily: 'Poppins_600SemiBold',
+        color: TEXT_DARK,
         marginTop: 10,
     },
 
     channelHint: {
         fontSize: 9,
-        color: '#7A8492',
+        color: TEXT_MUTED,
         marginTop: 2,
         paddingHorizontal: 4,
     },
 
     sectionTitle: {
+        fontFamily: 'Poppins_600SemiBold',
         fontSize: 15,
-        fontWeight: '700',
-        color: '#12263A',
+        color: TEAL_HEADING,
         marginBottom: 10,
     },
 
     card: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 14,
+        backgroundColor: WHITE,
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: BORDER,
         padding: 16,
         marginBottom: 20,
-        elevation: 2,
-        shadowColor: '#000000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 4,
+        elevation: 1,
+        shadowColor: '#26384A',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
     },
 
     faqRow: {
         paddingVertical: 12,
         borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: '#E8ECF1',
+        borderBottomColor: BORDER,
     },
 
     faqRowLast: {
@@ -415,23 +447,24 @@ const styles = StyleSheet.create({
     faqQuestion: {
         flex: 1,
         fontSize: 14,
-        fontWeight: '600',
-        color: '#12263A',
+        fontFamily: 'Poppins_600SemiBold',
+        color: TEXT_DARK,
         marginRight: 10,
     },
 
     faqAnswer: {
         fontSize: 13,
         lineHeight: 20,
-        color: '#7A8492',
+        color: TEXT_MUTED,
         marginTop: 10,
         paddingLeft: 44,
+        fontFamily: 'Poppins_400Regular',
     },
 
     inputLabel: {
+        fontFamily: 'Poppins_500Medium',
         fontSize: 12,
-        fontWeight: '600',
-        color: '#7A8492',
+        color: TEXT_MUTED,
         marginBottom: 8,
     },
 
@@ -439,10 +472,10 @@ const styles = StyleSheet.create({
         height: 50,
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#FFFFFF',
-        borderWidth: 1,
-        borderColor: '#E8ECF1',
-        borderRadius: 12,
+        backgroundColor: WHITE,
+        borderWidth: 1.5,
+        borderColor: BORDER,
+        borderRadius: 14,
         paddingHorizontal: 14,
         marginBottom: 14,
     },
@@ -461,7 +494,8 @@ const styles = StyleSheet.create({
         flex: 1,
         marginLeft: 10,
         fontSize: 14,
-        color: '#12263A',
+        color: TEXT_DARK,
+        fontFamily: 'Poppins_400Regular',
     },
 
     messageInput: {
@@ -470,19 +504,21 @@ const styles = StyleSheet.create({
     },
 
     submitButton: {
+        marginTop: 4,
+    },
+
+    submitGradient: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         height: 50,
-        borderRadius: 12,
-        backgroundColor: '#173D8F',
-        marginTop: 4,
+        borderRadius: 14,
     },
 
     submitText: {
-        color: '#FFFFFF',
+        color: WHITE,
         fontSize: 15,
-        fontWeight: '700',
+        fontFamily: 'Poppins_700Bold',
         marginRight: 8,
     },
 

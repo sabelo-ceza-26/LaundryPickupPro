@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   Alert,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -20,6 +21,8 @@ import { ROLE_LABELS } from '../../types';
 import { isEmail, isRequired } from '../../utils/validation';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Forgot'>;
+
+const isWeb = Platform.OS === 'web';
 
 export default function ForgotPasswordScreen({ navigation, route }: Props) {
   const { role } = route.params;
@@ -124,6 +127,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 12,
     paddingBottom: 30,
+    ...(isWeb ? {
+      maxWidth: 480,
+      alignSelf: 'center',
+      width: '100%',
+    } : {}),
   },
   backButton: {
     width: 44,

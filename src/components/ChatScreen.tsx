@@ -11,6 +11,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   useFonts,
   Poppins_400Regular,
@@ -20,6 +22,7 @@ import {
 } from '@expo-google-fonts/poppins';
 
 import { useChat, type ChatRole } from '../context/ChatContext';
+import { useNotifications } from '../context/NotificationsContext';
 
 const isWeb = Platform.OS === 'web';
 
@@ -31,14 +34,20 @@ type ChatScreenParams = {
 };
 
 export default function ChatScreen({ route }: { route?: { params?: ChatScreenParams } }) {
-  const { orderId, contactName, myRole, myName } = route?.params ?? {
-    orderId: 'ORD-1001',
-    contactName: 'Driver',
+  const navigation = useNavigation<NativeStackNavigationProp<Record<string, object | undefined>>>();
+  const params = route?.params;
+  const hasOrder = Boolean(
+    params && params.orderId.trim() && params.contactName.trim()
+  );
+  const { orderId, contactName, myRole, myName } = params ?? {
+    orderId: '',
+    contactName: '',
     myRole: 'customer' as ChatRole,
     myName: 'You',
   };
 
-  const { getMessages, sendMessage } = useChat();
+  const { getMessages, sendMessage, loadMessages } = useChat();
+  const { pushNotification } = useNotifications();
   const [input, setInput] = useState('');
   const scrollRef = useRef<ScrollView>(null);
   const [fontsLoaded] = useFonts({
@@ -49,6 +58,14 @@ export default function ChatScreen({ route }: { route?: { params?: ChatScreenPar
   });
 
   const messages = getMessages(orderId);
+
+  useEffect(() => {
+    if (!hasOrder) return undefined;
+    const unsubscribe = loadMessages(orderId);
+    return () => {
+      unsubscribe?.();
+    };
+  }, [hasOrder, orderId, loadMessages]);
 
   useEffect(() => {
     setTimeout(() => {
@@ -69,16 +86,56 @@ export default function ChatScreen({ route }: { route?: { params?: ChatScreenPar
 
   const handleSend = () => {
     const text = input.trim();
-    if (!text) return;
+    if (!text || !hasOrder) return;
     sendMessage(orderId, text, myRole, myName);
+    pushNotification({
+      kind: 'new_message',
+      audience: myRole === 'customer' ? 'driver' : 'customer',
+      recipientName: contactName,
+      orderId,
+      title: 'New Message',
+      message: `${myName} sent you a message about order ${orderId}.`,
+    }).catch(() => undefined);
     setInput('');
   };
 
   const contactInitial = contactName.charAt(0).toUpperCase();
 
+  if (!hasOrder) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.emptyHeader}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={22} color="#1F2933" />
+          </TouchableOpacity>
+        </View>
+        <View style={[styles.emptyChat, { paddingTop: 80 }]}>
+          <View style={styles.emptyIconWrap}>
+            <Ionicons name="chatbubbles-outline" size={36} color="#7857FF" />
+          </View>
+          <Text style={styles.emptyTitle}>No active conversation</Text>
+          <Text style={styles.emptySubtitle}>
+            Chat is only available for one of your orders. Open an order and
+            tap Chat to contact{' '}
+            {myRole === 'driver' ? 'the customer' : 'your driver'}.
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={22} color="#1F2933" />
+        </TouchableOpacity>
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>{contactInitial}</Text>
         </View>
@@ -188,6 +245,19 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E8ECF1',
     ...(isWeb ? { maxWidth: 600, alignSelf: 'center', width: '100%' } : {}),
+  },
+  backButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+    ...(isWeb ? { cursor: 'pointer' } : {}),
+  },
+  emptyHeader: {
+    paddingHorizontal: isWeb ? 32 : 14,
+    paddingTop: 4,
   },
   avatar: {
     width: 42,

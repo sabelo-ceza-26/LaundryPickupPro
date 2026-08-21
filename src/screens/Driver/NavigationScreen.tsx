@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
     Alert,
     Linking,
+    Platform,
     ScrollView,
     StyleSheet,
     Text,
@@ -9,10 +10,28 @@ import {
     View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useFonts, Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold } from '@expo-google-fonts/poppins';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import BookingHeader from '../../components/BookingHeader';
+import { useAuth } from '../../hooks/useAuth';
+import { useDriverOrders } from '../../context/DriverOrdersContext';
 
 import type { DriverStackParamList } from '../../navigation/DriverNavigator';
+
+const isWeb = Platform.OS === 'web';
+
+const TEXT_DARK = '#1F2933';
+const TEXT_MUTED = '#7A869A';
+const WHITE = '#FFFFFF';
+const BLUE = '#2E6BFF';
+const BLUE_TINT = '#E4EEFF';
+const PURPLE = '#7857FF';
+const GREEN = '#00A85A';
+const GREEN_TINT = '#DDF8E8';
+const BORDER = '#E8ECF1';
+const GRADIENT_PRIMARY = [BLUE, PURPLE] as const;
 
 type Props = NativeStackScreenProps<
     DriverStackParamList,
@@ -31,69 +50,73 @@ type Stop = {
     done: boolean;
 };
 
-const initialStops: Stop[] = [
-    {
-        id: 1,
-        orderNumber: 'ORD-1001',
-        type: 'Pickup',
-        customer: 'Matthew Yako',
-        phone: '083 987 5462',
-        address: '173 Sir Lowry, Woodstock',
-        time: '10:00 AM',
-        notes: 'Leave laundry bags on the front porch if not answered.',
-        done: false,
-    },
-    {
-        id: 2,
-        orderNumber: 'ORD-1002',
-        type: 'Delivery',
-        customer: 'Andiswa Gumede',
-        phone: '082 123 4567',
-        address: '22 Long Street, Cape Town',
-        time: '11:00 AM',
-        notes: 'Call before arrival.',
-        done: false,
-    },
-    {
-        id: 3,
-        orderNumber: 'ORD-1003',
-        type: 'Pickup',
-        customer: 'Sarah Jenkins',
-        phone: '084 555 7890',
-        address: '45 Albert Road, Woodstock',
-        time: '12:30 PM',
-        notes: 'Customer prefers contactless pickup.',
-        done: false,
-    },
-];
-
 export default function NavigationScreen({
     navigation,
 }: Props) {
+    const { user } = useAuth();
+    const { orders } = useDriverOrders();
+
+    const [fontsLoaded] = useFonts({
+        Poppins_400Regular,
+        Poppins_500Medium,
+        Poppins_600SemiBold,
+        Poppins_700Bold,
+    });
+
     const [started, setStarted] = useState(false);
-    const [stops, setStops] = useState<Stop[]>(initialStops);
+    const [completedIds, setCompletedIds] = useState<number[]>([]);
     const [currentIndex, setCurrentIndex] = useState(0);
+
+    const routeStops = useMemo<Stop[]>(
+        () =>
+            orders
+                .filter(
+                    (order) =>
+                        !order.driver || order.driver === user?.name,
+                )
+                .filter((order) => order.status !== 'Completed')
+                .map((order) => ({
+                    id: order.id,
+                    orderNumber: order.orderNumber,
+                    type:
+                        order.type === 'Delivery'
+                            ? 'Delivery'
+                            : 'Pickup',
+                    customer: order.customer,
+                    phone: order.phone ?? '',
+                    address: order.address,
+                    time: order.time,
+                    notes: order.notes?.trim()
+                        ? order.notes
+                        : 'No additional notes for this stop.',
+                    done: false,
+                })),
+        [orders, user],
+    );
+
+    const stops: Stop[] = routeStops.map((stop) => ({
+        ...stop,
+        done: completedIds.includes(stop.id),
+    }));
 
     const completedCount = stops.filter((stop) => stop.done).length;
     const currentStop = started
         ? stops[currentIndex]
         : null;
     const finished =
-        started && completedCount === stops.length;
+        started &&
+        stops.length > 0 &&
+        completedCount === stops.length;
 
     const startRoute = () => {
+        if (stops.length === 0) return;
         setStarted(true);
     };
 
     const completeCurrentStop = () => {
         if (!currentStop) return;
 
-        const nextStops = stops.map((stop) =>
-            stop.id === currentStop.id
-                ? { ...stop, done: true }
-                : stop,
-        );
-        setStops(nextStops);
+        setCompletedIds((prev) => [...prev, currentStop.id]);
 
         if (currentIndex + 1 >= stops.length) {
             setCurrentIndex(stops.length);
@@ -104,6 +127,13 @@ export default function NavigationScreen({
 
     const callCustomer = () => {
         if (!currentStop) return;
+        if (!currentStop.phone) {
+            Alert.alert(
+                'Cannot call',
+                'No phone number is available for this customer.',
+            );
+            return;
+        }
         Linking.openURL(`tel:${currentStop.phone}`).catch(() =>
             Alert.alert(
                 'Cannot call',
@@ -135,10 +165,10 @@ export default function NavigationScreen({
         if (stop.done) {
             return (
                 <View style={[styles.stopDot, styles.stopDotDone]}>
-                    <Ionicons
-                        name="checkmark"
+                    <MaterialCommunityIcons
+                        name="check"
                         size={14}
-                        color="#FFFFFF"
+                        color={WHITE}
                     />
                 </View>
             );
@@ -153,24 +183,19 @@ export default function NavigationScreen({
         return <View style={styles.stopDot} />;
     };
 
+    if (!fontsLoaded) {
+        return null;
+    }
+
     return (
         <SafeAreaView style={styles.safeArea}>
-            <ScrollView contentContainerStyle={styles.container}>
+            <BookingHeader
+                title="Navigation"
+                onBack={() => navigation.goBack()}
+                showCancelBooking={false}
+            />
 
-                {/* Header */}
-                <View style={styles.header}>
-                    <TouchableOpacity onPress={() => navigation.goBack()}>
-                        <Ionicons
-                            name="chevron-back"
-                            size={28}
-                            color="#12263A"
-                        />
-                    </TouchableOpacity>
-                    <Text style={styles.title}>
-                        Navigation
-                    </Text>
-                    <View style={{ width: 28 }} />
-                </View>
+            <ScrollView contentContainerStyle={styles.container}>
 
                 {/* Route Summary */}
                 <View style={styles.summaryCard}>
@@ -187,7 +212,9 @@ export default function NavigationScreen({
                         <View style={styles.progressCircle}>
                             <Text style={styles.progressText}>
                                 {Math.round(
-                                    (completedCount / stops.length) * 100,
+                                    (completedCount /
+                                        (stops.length || 1)) *
+                                        100,
                                 )}
                                 %
                             </Text>
@@ -199,7 +226,8 @@ export default function NavigationScreen({
                                 styles.progressFill,
                                 {
                                     width: `${
-                                        (completedCount / stops.length) *
+                                        (completedCount /
+                                            (stops.length || 1)) *
                                         100
                                     }%`,
                                 },
@@ -218,8 +246,8 @@ export default function NavigationScreen({
                                     {
                                         backgroundColor:
                                             currentStop.type === 'Pickup'
-                                                ? '#E8EFFD'
-                                                : '#E9F9EF',
+                                                ? BLUE_TINT
+                                                : GREEN_TINT,
                                     },
                                 ]}
                             >
@@ -232,8 +260,8 @@ export default function NavigationScreen({
                                     size={20}
                                     color={
                                         currentStop.type === 'Pickup'
-                                            ? '#173D8F'
-                                            : '#16A34A'
+                                            ? BLUE
+                                            : GREEN
                                     }
                                 />
                             </View>
@@ -256,10 +284,10 @@ export default function NavigationScreen({
                             {currentStop.customer}
                         </Text>
                         <Text style={styles.currentAddress}>
-                            <Ionicons
-                                name="location-outline"
+                            <MaterialCommunityIcons
+                                name="map-marker-outline"
                                 size={13}
-                                color="#7A8492"
+                                color={TEXT_MUTED}
                             />
                             {'  '}
                             {currentStop.address}
@@ -273,10 +301,10 @@ export default function NavigationScreen({
                                 style={styles.callButton}
                                 onPress={callCustomer}
                             >
-                                <Ionicons
-                                    name="call-outline"
+                                <MaterialCommunityIcons
+                                    name="phone-outline"
                                     size={18}
-                                    color="#173D8F"
+                                    color={BLUE}
                                 />
                                 <Text style={styles.callButtonText}>
                                     Call
@@ -286,14 +314,21 @@ export default function NavigationScreen({
                                 style={styles.navigateButton}
                                 onPress={openMaps}
                             >
-                                <Ionicons
-                                    name="navigate-outline"
-                                    size={18}
-                                    color="#FFFFFF"
-                                />
-                                <Text style={styles.navigateButtonText}>
-                                    Navigate
-                                </Text>
+                                <LinearGradient
+                                    colors={GRADIENT_PRIMARY}
+                                    style={styles.navigateGradient}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 0 }}
+                                >
+                                    <MaterialCommunityIcons
+                                        name="navigation-outline"
+                                        size={18}
+                                        color={WHITE}
+                                    />
+                                    <Text style={styles.navigateButtonText}>
+                                        Navigate
+                                    </Text>
+                                </LinearGradient>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -303,10 +338,10 @@ export default function NavigationScreen({
                 {finished && (
                     <View style={styles.finishedCard}>
                         <View style={styles.finishedIcon}>
-                            <Ionicons
+                            <MaterialCommunityIcons
                                 name="flag"
                                 size={32}
-                                color="#16A34A"
+                                color={GREEN}
                             />
                         </View>
                         <Text style={styles.finishedTitle}>
@@ -320,81 +355,120 @@ export default function NavigationScreen({
                             style={styles.finishButton}
                             onPress={finishRoute}
                         >
-                            <Text style={styles.finishButtonText}>
-                                Back to Dashboard
-                            </Text>
+                            <LinearGradient
+                                colors={GRADIENT_PRIMARY}
+                                style={styles.finishGradient}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                            >
+                                <Text style={styles.finishButtonText}>
+                                    Back to Dashboard
+                                </Text>
+                            </LinearGradient>
                         </TouchableOpacity>
                     </View>
                 )}
 
-                {/* Stops List */}
-                <Text style={styles.sectionTitle}>
-                    Route Stops
-                </Text>
+                {/* No Orders Assigned */}
+                {stops.length === 0 && (
+                    <View style={styles.finishedCard}>
+                        <View style={styles.finishedIcon}>
+                            <MaterialCommunityIcons
+                                name="package-variant-closed"
+                                size={32}
+                                color={BLUE}
+                            />
+                        </View>
+                        <Text style={styles.finishedTitle}>
+                            No Orders Assigned
+                        </Text>
+                        <Text style={styles.finishedMessage}>
+                            You can only start a route once an order has
+                            been assigned to you. New assignments will
+                            appear here automatically.
+                        </Text>
+                    </View>
+                )}
 
-                <View style={styles.stopsCard}>
-                    {stops.map((stop, index) => (
-                        <View
-                            key={stop.id}
-                            style={[
-                                styles.stopRow,
-                                index === stops.length - 1 &&
-                                styles.stopRowLast,
-                            ]}
-                        >
-                            <View style={styles.stopIndicator}>
-                                {renderStopStatus(index)}
-                                {index !== stops.length - 1 && (
-                                    <View style={styles.stopLine} />
-                                )}
-                            </View>
-                            <View style={styles.stopInfo}>
-                                <View style={styles.stopInfoTop}>
-                                    <Text style={styles.stopOrderNumber}>
-                                        {stop.orderNumber}
-                                    </Text>
-                                    <Text style={styles.stopTime}>
-                                        {stop.time}
-                                    </Text>
-                                </View>
-                                <Text style={styles.stopCustomer}>
-                                    {stop.customer}
-                                </Text>
-                                <Text style={styles.stopAddress}>
-                                    {stop.address}
-                                </Text>
-                                <Text
+                {/* Stops List */}
+                {stops.length > 0 && (
+                    <>
+                        <Text style={styles.sectionTitle}>
+                            Route Stops
+                        </Text>
+
+                        <View style={styles.stopsCard}>
+                            {stops.map((stop, index) => (
+                                <View
+                                    key={stop.id}
                                     style={[
-                                        styles.stopType,
-                                        {
-                                            color:
-                                                stop.type === 'Pickup'
-                                                    ? '#173D8F'
-                                                    : '#16A34A',
-                                        },
+                                        styles.stopRow,
+                                        index === stops.length - 1 &&
+                                        styles.stopRowLast,
                                     ]}
                                 >
-                                    {stop.type}
-                                </Text>
-                            </View>
+                                    <View style={styles.stopIndicator}>
+                                        {renderStopStatus(index)}
+                                        {index !== stops.length - 1 && (
+                                            <View style={styles.stopLine} />
+                                        )}
+                                    </View>
+                                    <View style={styles.stopInfo}>
+                                        <View style={styles.stopInfoTop}>
+                                            <Text style={styles.stopOrderNumber}>
+                                                {stop.orderNumber}
+                                            </Text>
+                                            <Text style={styles.stopTime}>
+                                                {stop.time}
+                                            </Text>
+                                        </View>
+                                        <Text style={styles.stopCustomer}>
+                                            {stop.customer}
+                                        </Text>
+                                        <Text style={styles.stopAddress}>
+                                            {stop.address}
+                                        </Text>
+                                        <Text
+                                            style={[
+                                                styles.stopType,
+                                                {
+                                                    color:
+                                                        stop.type === 'Pickup'
+                                                            ? BLUE
+                                                            : GREEN,
+                                                },
+                                            ]}
+                                        >
+                                            {stop.type}
+                                        </Text>
+                                    </View>
+                                </View>
+                            ))}
                         </View>
-                    ))}
-                </View>
+                    </>
+                )}
 
                 {/* Start Route Button */}
-                {!started && (
+                {!started && stops.length > 0 && (
                     <TouchableOpacity
                         style={styles.startButton}
                         onPress={startRoute}
                     >
-                        <Ionicons
-                            name="play"
-                            size={20}
-                            color="#FFFFFF"
-                        />
-                        <Text style={styles.startButtonText}>
-                            Start Route
-                        </Text>
+                        <LinearGradient
+                            colors={GRADIENT_PRIMARY}
+                            style={styles.startGradient}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                        >
+                            <MaterialCommunityIcons
+                                name="play"
+                                size={20}
+                                color={WHITE}
+                            />
+                            <Text style={styles.startButtonText}>
+                                Start Route
+                            </Text>
+                        </LinearGradient>
                     </TouchableOpacity>
                 )}
 
@@ -404,16 +478,23 @@ export default function NavigationScreen({
                         style={styles.startButton}
                         onPress={completeCurrentStop}
                     >
-                        <Ionicons
-                            name="checkmark-done"
-                            size={20}
-                            color="#FFFFFF"
-                        />
-                        <Text style={styles.startButtonText}>
-                            {currentIndex + 1 >= stops.length
-                                ? 'Finish Route'
-                                : 'Complete & Next Stop'}
-                        </Text>
+                        <LinearGradient
+                            colors={GRADIENT_PRIMARY}
+                            style={styles.startGradient}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                        >
+                            <MaterialCommunityIcons
+                                name="check-all"
+                                size={20}
+                                color={WHITE}
+                            />
+                            <Text style={styles.startButtonText}>
+                                {currentIndex + 1 >= stops.length
+                                    ? 'Finish Route'
+                                    : 'Complete & Next Stop'}
+                            </Text>
+                        </LinearGradient>
                     </TouchableOpacity>
                 )}
 
@@ -426,37 +507,29 @@ const styles = StyleSheet.create({
 
     safeArea: {
         flex: 1,
-        backgroundColor: '#F5F7FA',
+        backgroundColor: WHITE,
     },
 
     container: {
-        padding: 20,
+        paddingHorizontal: isWeb ? 32 : 20,
+        paddingVertical: 20,
         paddingBottom: 30,
-    },
-
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 20,
-    },
-
-    title: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: '#12263A',
+        backgroundColor: '#F5F7FA',
+        ...(isWeb ? { maxWidth: 600, alignSelf: 'center', width: '100%' } : {}),
     },
 
     summaryCard: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 14,
+        backgroundColor: WHITE,
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: BORDER,
         padding: 16,
         marginBottom: 16,
-        elevation: 2,
-        shadowColor: '#000000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 4,
+        elevation: 1,
+        shadowColor: '#26384A',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
     },
 
     summaryTop: {
@@ -466,14 +539,15 @@ const styles = StyleSheet.create({
     },
 
     summaryLabel: {
+        fontFamily: 'Poppins_400Regular',
         fontSize: 12,
-        color: '#7A8492',
+        color: TEXT_MUTED,
     },
 
     summaryTitle: {
+        fontFamily: 'Poppins_700Bold',
         fontSize: 16,
-        fontWeight: '700',
-        color: '#12263A',
+        color: TEXT_DARK,
         marginTop: 3,
     },
 
@@ -481,21 +555,21 @@ const styles = StyleSheet.create({
         width: 52,
         height: 52,
         borderRadius: 26,
-        backgroundColor: '#E8EFFD',
+        backgroundColor: BLUE_TINT,
         justifyContent: 'center',
         alignItems: 'center',
     },
 
     progressText: {
+        fontFamily: 'Poppins_700Bold',
         fontSize: 14,
-        fontWeight: '700',
-        color: '#173D8F',
+        color: BLUE,
     },
 
     progressTrack: {
         height: 8,
         borderRadius: 4,
-        backgroundColor: '#E8ECF1',
+        backgroundColor: BORDER,
         marginTop: 14,
         overflow: 'hidden',
     },
@@ -503,21 +577,23 @@ const styles = StyleSheet.create({
     progressFill: {
         height: '100%',
         borderRadius: 4,
-        backgroundColor: '#173D8F',
+        backgroundColor: BLUE,
     },
 
     currentCard: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 14,
+        backgroundColor: WHITE,
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: BLUE_TINT,
+        borderLeftWidth: 4,
+        borderLeftColor: BLUE,
         padding: 16,
         marginBottom: 16,
-        borderLeftWidth: 4,
-        borderLeftColor: '#173D8F',
-        elevation: 2,
-        shadowColor: '#000000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 4,
+        elevation: 1,
+        shadowColor: '#26384A',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
     },
 
     currentHeader: {
@@ -539,46 +615,49 @@ const styles = StyleSheet.create({
     },
 
     currentOrderNumber: {
+        fontFamily: 'Poppins_700Bold',
         fontSize: 15,
-        fontWeight: '700',
-        color: '#12263A',
+        color: TEXT_DARK,
     },
 
     currentType: {
+        fontFamily: 'Poppins_400Regular',
         fontSize: 12,
-        color: '#7A8492',
+        color: TEXT_MUTED,
         marginTop: 2,
     },
 
     nextBadge: {
-        backgroundColor: '#173D8F',
+        backgroundColor: BLUE,
         borderRadius: 8,
         paddingHorizontal: 8,
         paddingVertical: 4,
     },
 
     nextBadgeText: {
+        fontFamily: 'Poppins_700Bold',
         fontSize: 10,
-        fontWeight: '700',
-        color: '#FFFFFF',
+        color: WHITE,
     },
 
     currentCustomer: {
+        fontFamily: 'Poppins_700Bold',
         fontSize: 16,
-        fontWeight: '700',
-        color: '#12263A',
+        color: TEXT_DARK,
         marginTop: 12,
     },
 
     currentAddress: {
+        fontFamily: 'Poppins_400Regular',
         fontSize: 13,
-        color: '#7A8492',
+        color: TEXT_MUTED,
         marginTop: 4,
     },
 
     currentNotes: {
+        fontFamily: 'Poppins_400Regular',
         fontSize: 12,
-        color: '#777',
+        color: TEXT_MUTED,
         marginTop: 8,
         lineHeight: 18,
         fontStyle: 'italic',
@@ -594,7 +673,7 @@ const styles = StyleSheet.create({
         height: 44,
         borderRadius: 10,
         borderWidth: 1,
-        borderColor: '#173D8F',
+        borderColor: BLUE,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
@@ -602,62 +681,67 @@ const styles = StyleSheet.create({
     },
 
     callButtonText: {
+        fontFamily: 'Poppins_600SemiBold',
         fontSize: 14,
-        fontWeight: '700',
-        color: '#173D8F',
+        color: BLUE,
         marginLeft: 6,
     },
 
     navigateButton: {
         flex: 1,
-        height: 44,
-        borderRadius: 10,
-        backgroundColor: '#173D8F',
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
         marginLeft: 8,
     },
 
+    navigateGradient: {
+        height: 44,
+        borderRadius: 10,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+
     navigateButtonText: {
+        fontFamily: 'Poppins_600SemiBold',
         fontSize: 14,
-        fontWeight: '700',
-        color: '#FFFFFF',
+        color: WHITE,
         marginLeft: 6,
     },
 
     finishedCard: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 14,
+        backgroundColor: WHITE,
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: BORDER,
         padding: 24,
         alignItems: 'center',
         marginBottom: 16,
-        elevation: 2,
-        shadowColor: '#000000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 4,
+        elevation: 1,
+        shadowColor: '#26384A',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
     },
 
     finishedIcon: {
         width: 64,
         height: 64,
         borderRadius: 32,
-        backgroundColor: '#E9F9EF',
+        backgroundColor: GREEN_TINT,
         justifyContent: 'center',
         alignItems: 'center',
     },
 
     finishedTitle: {
+        fontFamily: 'Poppins_700Bold',
         fontSize: 18,
-        fontWeight: '700',
-        color: '#12263A',
+        color: TEXT_DARK,
         marginTop: 12,
     },
 
     finishedMessage: {
+        fontFamily: 'Poppins_400Regular',
         fontSize: 13,
-        color: '#7A8492',
+        color: TEXT_MUTED,
         textAlign: 'center',
         marginTop: 6,
         lineHeight: 20,
@@ -667,43 +751,49 @@ const styles = StyleSheet.create({
         alignSelf: 'stretch',
         height: 48,
         borderRadius: 12,
-        backgroundColor: '#173D8F',
-        justifyContent: 'center',
-        alignItems: 'center',
+        overflow: 'hidden',
         marginTop: 16,
     },
 
+    finishGradient: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+
     finishButtonText: {
+        fontFamily: 'Poppins_600SemiBold',
         fontSize: 15,
-        fontWeight: '700',
-        color: '#FFFFFF',
+        color: WHITE,
     },
 
     sectionTitle: {
+        fontFamily: 'Poppins_600SemiBold',
         fontSize: 15,
-        fontWeight: '700',
-        color: '#12263A',
+        color: TEXT_DARK,
         marginBottom: 10,
     },
 
     stopsCard: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 14,
+        backgroundColor: WHITE,
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: BORDER,
         paddingHorizontal: 14,
         paddingVertical: 6,
         marginBottom: 18,
-        elevation: 2,
-        shadowColor: '#000000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 4,
+        elevation: 1,
+        shadowColor: '#26384A',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
     },
 
     stopRow: {
         flexDirection: 'row',
         paddingVertical: 12,
         borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: '#E8ECF1',
+        borderBottomColor: BORDER,
     },
 
     stopRowLast: {
@@ -721,13 +811,13 @@ const styles = StyleSheet.create({
         height: 16,
         borderRadius: 8,
         borderWidth: 2,
-        borderColor: '#B9BEC7',
-        backgroundColor: '#FFFFFF',
+        borderColor: BORDER,
+        backgroundColor: WHITE,
     },
 
     stopDotDone: {
-        borderColor: '#16A34A',
-        backgroundColor: '#16A34A',
+        borderColor: GREEN,
+        backgroundColor: GREEN,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -737,7 +827,7 @@ const styles = StyleSheet.create({
         height: 16,
         borderRadius: 8,
         borderWidth: 2,
-        borderColor: '#173D8F',
+        borderColor: BLUE,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -746,13 +836,13 @@ const styles = StyleSheet.create({
         width: 8,
         height: 8,
         borderRadius: 4,
-        backgroundColor: '#173D8F',
+        backgroundColor: BLUE,
     },
 
     stopLine: {
         flex: 1,
         width: 2,
-        backgroundColor: '#E8ECF1',
+        backgroundColor: BORDER,
         minHeight: 16,
         marginVertical: 2,
     },
@@ -768,50 +858,54 @@ const styles = StyleSheet.create({
     },
 
     stopOrderNumber: {
+        fontFamily: 'Poppins_700Bold',
         fontSize: 13,
-        fontWeight: '700',
-        color: '#173D8F',
+        color: BLUE,
     },
 
     stopTime: {
+        fontFamily: 'Poppins_500Medium',
         fontSize: 12,
-        fontWeight: '600',
-        color: '#7A8492',
+        color: TEXT_MUTED,
     },
 
     stopCustomer: {
+        fontFamily: 'Poppins_500Medium',
         fontSize: 14,
-        fontWeight: '600',
-        color: '#12263A',
+        color: TEXT_DARK,
         marginTop: 3,
     },
 
     stopAddress: {
+        fontFamily: 'Poppins_400Regular',
         fontSize: 12,
-        color: '#7A8492',
+        color: TEXT_MUTED,
         marginTop: 2,
     },
 
     stopType: {
+        fontFamily: 'Poppins_700Bold',
         fontSize: 11,
-        fontWeight: '700',
         marginTop: 4,
     },
 
     startButton: {
-        backgroundColor: '#173D8F',
-        height: 52,
         borderRadius: 12,
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
+        overflow: 'hidden',
         elevation: 2,
     },
 
+    startGradient: {
+        height: 52,
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+
     startButtonText: {
-        color: '#FFFFFF',
+        fontFamily: 'Poppins_700Bold',
+        color: WHITE,
         fontSize: 16,
-        fontWeight: '700',
         marginLeft: 8,
     },
 

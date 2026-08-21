@@ -3,6 +3,7 @@ import {
   Alert,
   FlatList,
   Modal,
+  Platform,
   StyleSheet,
   Text,
   TextInput,
@@ -47,6 +48,7 @@ const WHITE = '#FFFFFF';
 
 const GRADIENT_VIBRANT = ['#2E6BFF', '#7857FF'] as const;
 const GRADIENT_GREEN = ['#00A85A', '#0B7A50'] as const;
+const GRADIENT_DANGER = ['#E5484D', '#C2383C'] as const;
 
 const initialAddresses: SavedAddress[] = [
   {
@@ -71,6 +73,8 @@ const initialAddresses: SavedAddress[] = [
 
 type EditingAddress = SavedAddress | null;
 
+const isWeb = Platform.OS === 'web';
+
 export default function AdressesScreen({ navigation }: Props) {
   const [addresses, setAddresses] = useState<SavedAddress[]>(initialAddresses);
   const [fontsLoaded] = useFonts({
@@ -84,6 +88,7 @@ export default function AdressesScreen({ navigation }: Props) {
   const [label, setLabel] = useState('');
   const [address, setAddress] = useState('');
   const [makeDefault, setMakeDefault] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<SavedAddress | null>(null);
 
   if (!fontsLoaded) return null;
 
@@ -104,20 +109,14 @@ export default function AdressesScreen({ navigation }: Props) {
   };
 
   const handleDelete = (item: SavedAddress) => {
-    Alert.alert(
-      'Delete address',
-      `Remove "${item.label}" – ${item.address}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            setAddresses((prev) => prev.filter((a) => a.id !== item.id));
-          },
-        },
-      ]
-    );
+    setDeleteTarget(item);
+  };
+
+  const confirmDelete = () => {
+    if (deleteTarget) {
+      setAddresses((prev) => prev.filter((a) => a.id !== deleteTarget.id));
+    }
+    setDeleteTarget(null);
   };
 
   const handleSave = () => {
@@ -211,7 +210,7 @@ export default function AdressesScreen({ navigation }: Props) {
           </View>
         }
         renderItem={({ item }) => (
-          <View style={styles.card}>
+          <View style={[styles.card, item.isDefault && styles.cardDefault]}>
             <View style={[styles.cardIcon, item.isDefault && styles.cardIconDefault]}>
               <MaterialCommunityIcons
                 name={item.isDefault ? 'home-variant' : 'map-marker-outline'}
@@ -224,11 +223,14 @@ export default function AdressesScreen({ navigation }: Props) {
                 <Text style={styles.cardLabel}>{item.label}</Text>
                 {item.isDefault && (
                   <LinearGradient colors={GRADIENT_GREEN} style={styles.defaultBadge}>
+                    <MaterialCommunityIcons name="check" size={10} color={WHITE} />
                     <Text style={styles.defaultBadgeText}>Default</Text>
                   </LinearGradient>
                 )}
               </View>
-              <Text style={styles.cardAddress}>{item.address}</Text>
+              <Text style={[styles.cardAddress, item.isDefault && styles.cardAddressDefault]}>
+                {item.address}
+              </Text>
               <View style={styles.cardActions}>
                 <TouchableOpacity
                   style={[styles.cardAction, styles.cardActionEdit]}
@@ -332,6 +334,53 @@ export default function AdressesScreen({ navigation }: Props) {
           </View>
         </View>
       </Modal>
+
+      <Modal
+        visible={deleteTarget !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDeleteTarget(null)}
+      >
+        <View style={styles.deleteOverlay}>
+          <View style={styles.deleteCard}>
+            <View style={styles.deleteIconGlow}>
+              <View style={styles.deleteIconCircle}>
+                <MaterialCommunityIcons name="trash-can-outline" size={34} color={RED} />
+              </View>
+            </View>
+            <Text style={styles.deleteTitle}>Delete Address?</Text>
+            <Text style={styles.deleteMessage}>
+              Remove{' '}
+              <Text style={styles.deleteRef}>{deleteTarget?.label}</Text>
+              {' – '}
+              <Text style={styles.deleteRef}>{deleteTarget?.address}</Text>
+              ?{'\n'}This cannot be undone.
+            </Text>
+            <View style={styles.deleteActions}>
+              <TouchableOpacity
+                style={styles.deleteCancelTouch}
+                activeOpacity={0.85}
+                onPress={() => setDeleteTarget(null)}
+              >
+                <View style={styles.deleteCancelButton}>
+                  <Text style={styles.deleteCancelText}>Keep Address</Text>
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.deleteConfirmTouch}
+                activeOpacity={0.85}
+                onPress={confirmDelete}
+              >
+                <LinearGradient colors={GRADIENT_DANGER} style={styles.deleteConfirmButton}>
+                  <View style={styles.deleteConfirmShine} />
+                  <MaterialCommunityIcons name="trash-can-outline" size={16} color={WHITE} />
+                  <Text style={styles.deleteConfirmText}>Delete</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -378,8 +427,9 @@ const styles = StyleSheet.create({
     color: WHITE,
   },
   listContent: {
-    padding: 20,
+    padding: isWeb ? 32 : 20,
     paddingBottom: 40,
+    ...(isWeb ? { maxWidth: 600, alignSelf: 'center', width: '100%' } : {}),
   },
   defaultNotice: {
     flexDirection: 'row',
@@ -412,7 +462,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: WHITE,
     borderRadius: 18,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: BORDER,
     padding: 14,
     marginBottom: 12,
@@ -421,6 +471,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 12,
     elevation: 2,
+  },
+  cardDefault: {
+    borderColor: '#B8F0D0',
+    backgroundColor: '#F6FFF9',
   },
   cardIcon: {
     width: 44,
@@ -448,9 +502,12 @@ const styles = StyleSheet.create({
   },
   defaultBadge: {
     marginLeft: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 10,
     paddingVertical: 3,
     borderRadius: 10,
+    gap: 4,
   },
   defaultBadgeText: {
     fontFamily: 'Poppins_600SemiBold',
@@ -462,6 +519,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: TEXT_MUTED,
     marginTop: 3,
+  },
+  cardAddressDefault: {
+    color: '#0B7A50',
   },
   cardActions: {
     flexDirection: 'row',
@@ -624,5 +684,120 @@ const styles = StyleSheet.create({
     borderRadius: 45,
     backgroundColor: 'rgba(255,255,255,0.14)',
     transform: [{ rotate: '20deg' }],
+  },
+  deleteOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(18, 38, 58, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 28,
+  },
+  deleteCard: {
+    backgroundColor: WHITE,
+    borderRadius: 28,
+    paddingHorizontal: 26,
+    paddingTop: 32,
+    paddingBottom: 24,
+    alignItems: 'center',
+    width: '100%',
+    maxWidth: 360,
+    elevation: 18,
+    shadowColor: '#1A1A2E',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.3,
+    shadowRadius: 24,
+  },
+  deleteIconGlow: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(229, 72, 77, 0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  deleteIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: RED_TINT,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  deleteTitle: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 18,
+    color: TEXT_DARK,
+    marginBottom: 8,
+  },
+  deleteMessage: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 13,
+    lineHeight: 21,
+    color: TEXT_MUTED,
+    textAlign: 'center',
+    marginBottom: 22,
+    paddingHorizontal: 4,
+  },
+  deleteRef: {
+    fontFamily: 'Poppins_600SemiBold',
+    color: RED,
+  },
+  deleteActions: {
+    flexDirection: 'row',
+    width: '100%',
+    gap: 10,
+  },
+  deleteCancelTouch: {
+    flex: 1,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: BORDER,
+    backgroundColor: '#F9FAFB',
+  },
+  deleteCancelButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 50,
+    borderRadius: 14,
+  },
+  deleteCancelText: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 14,
+    color: '#0E7A86',
+  },
+  deleteConfirmTouch: {
+    flex: 1,
+    borderRadius: 14,
+    elevation: 6,
+    shadowColor: RED,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+  },
+  deleteConfirmButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 50,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  deleteConfirmShine: {
+    position: 'absolute',
+    top: -20,
+    left: -20,
+    width: 60,
+    height: 80,
+    borderRadius: 30,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    transform: [{ rotate: '20deg' }],
+  },
+  deleteConfirmText: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 14,
+    color: WHITE,
+    marginLeft: 6,
   },
 });

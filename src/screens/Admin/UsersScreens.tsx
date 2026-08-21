@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import {
   FlatList,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -290,6 +291,8 @@ function CustomerDetailModal({
     </Modal>
   );
 }
+
+const isWeb = Platform.OS === 'web';
 
 export default function UsersScreen({ navigation }: Props) {
   const { customers, addCustomer, updateCustomer, deleteCustomer } = useAdmin();
@@ -611,8 +614,9 @@ const styles = StyleSheet.create({
     color: WHITE,
   },
   listContent: {
-    paddingHorizontal: 20,
+    paddingHorizontal: isWeb ? 32 : 20,
     paddingBottom: 40,
+    ...(isWeb ? { maxWidth: 700, alignSelf: 'center', width: '100%' } : {}),
   },
   searchWrap: {
     flexDirection: 'row',

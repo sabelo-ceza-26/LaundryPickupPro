@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -19,6 +20,12 @@ import {
 } from '@expo-google-fonts/poppins';
 
 import type { AdminStackParamList } from '../../navigation/AdminNavigator';
+import { useAdmin } from '../../context/AdminContext';
+import {
+  computeReportStats,
+  type StatusShareEntry,
+} from '../../services/reportsService';
+import { formatMoney } from '../../utils/format';
 
 type Props = NativeStackScreenProps<AdminStackParamList, 'Reports'>;
 
@@ -33,16 +40,6 @@ const WHITE = '#FFFFFF';
 
 const GRADIENT_VIBRANT = [BLUE, PURPLE] as const;
 
-const weeklyOrders = [
-  { day: 'M', value: 18 },
-  { day: 'T', value: 22 },
-  { day: 'W', value: 29 },
-  { day: 'T', value: 25 },
-  { day: 'F', value: 34 },
-  { day: 'S', value: 38 },
-  { day: 'S', value: 20 },
-];
-
 type Stat = {
   label: string;
   value: string;
@@ -51,37 +48,21 @@ type Stat = {
   color: string;
 };
 
-const stats: Stat[] = [
-  {
-    label: 'Revenue',
-    value: 'R42,850',
-    icon: 'cash-multiple',
-    tint: '#DDF8E8',
-    color: '#00A85A',
-  },
-  {
-    label: 'Orders',
-    value: '384',
-    icon: 'receipt-text-outline',
-    tint: BLUE_TINT,
-    color: BLUE,
-  },
-  {
-    label: 'Avg Order',
-    value: 'R111.50',
-    icon: 'calculator-variant-outline',
-    tint: '#EFEBFF',
-    color: PURPLE,
-  },
-];
+const isWeb = Platform.OS === 'web';
 
-const legendItems = [
-  { label: 'Delivered', value: '62%', tint: '#DDF8E8', color: '#00A85A' },
-  { label: 'In Progress', value: '25%', tint: '#E4EEFF', color: '#3278F6' },
-  { label: 'To Pick Up', value: '13%', tint: '#FFF0B8', color: '#E5A900' },
-];
+function formatRangeLabel(start: Date, end: Date): string {
+  const fmt = (date: Date, withYear: boolean) =>
+    date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      ...(withYear ? { year: 'numeric' } : {}),
+    });
+  const sameYear = start.getFullYear() === end.getFullYear();
+  return `${fmt(start, !sameYear)} - ${fmt(end, true)}`;
+}
 
 export default function ReportsScreen({ navigation }: Props) {
+  const { orders } = useAdmin();
   const [fontsLoaded] = useFonts({
     Poppins_400Regular,
     Poppins_500Medium,
@@ -89,7 +70,42 @@ export default function ReportsScreen({ navigation }: Props) {
     Poppins_700Bold,
   });
 
+  const report = useMemo(() => computeReportStats(orders), [orders]);
+
   if (!fontsLoaded) return null;
+
+  const maxWeeklyValue = Math.max(
+    ...report.weeklyTrend.map((point) => point.value),
+    1
+  );
+
+  const stats: Stat[] = [
+    {
+      label: 'Revenue',
+      value: formatMoney(report.totalRevenue),
+      icon: 'cash-multiple',
+      tint: '#DDF8E8',
+      color: '#00A85A',
+    },
+    {
+      label: 'Orders',
+      value: String(report.totalOrders),
+      icon: 'receipt-text-outline',
+      tint: BLUE_TINT,
+      color: BLUE,
+    },
+    {
+      label: 'Avg Order',
+      value: formatMoney(report.avgOrderValue),
+      icon: 'calculator-variant-outline',
+      tint: '#EFEBFF',
+      color: PURPLE,
+    },
+  ];
+
+  const legendItems = report.statusShare.filter(
+    (item) => item.count > 0
+  ) as StatusShareEntry[];
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -116,7 +132,9 @@ export default function ReportsScreen({ navigation }: Props) {
           <View style={styles.dateIconWrap}>
             <MaterialCommunityIcons name="calendar-month-outline" size={18} color={BLUE} />
           </View>
-          <Text style={styles.dateText}>Jul 20, 2026 - Jul 29, 2026</Text>
+          <Text style={styles.dateText}>
+            {formatRangeLabel(report.rangeStart, report.rangeEnd)}
+          </Text>
         </View>
 
         <View style={styles.statsRow}>
@@ -125,7 +143,9 @@ export default function ReportsScreen({ navigation }: Props) {
               <View style={[styles.statIcon, { backgroundColor: stat.tint }]}>
                 <MaterialCommunityIcons name={stat.icon} size={18} color={stat.color} />
               </View>
-              <Text style={styles.statValue}>{stat.value}</Text>
+              <Text style={styles.statValue} numberOfLines={1}>
+                {stat.value}
+              </Text>
               <Text style={styles.statLabel}>{stat.label}</Text>
             </View>
           ))}
@@ -135,14 +155,20 @@ export default function ReportsScreen({ navigation }: Props) {
           <Text style={styles.cardTitle}>Weekly Orders Trend</Text>
 
           <View style={styles.chartContainer}>
-            {weeklyOrders.map((item, index) => (
-              <View key={`${item.day}-${index}`} style={styles.barColumn}>
+            {report.weeklyTrend.map((item, index) => (
+              <View key={`${item.label}-${index}`} style={styles.barColumn}>
                 <View style={styles.barTrack}>
                   <View
                     style={[
                       styles.bar,
                       {
-                        height: item.value * 3,
+                        height:
+                          item.value === 0
+                            ? 6
+                            : Math.max(
+                                25,
+                                (item.value / maxWeeklyValue) * 170
+                              ),
                       },
                     ]}
                   />
@@ -157,24 +183,42 @@ export default function ReportsScreen({ navigation }: Props) {
         <View style={styles.reportCard}>
           <Text style={styles.cardTitle}>Order Status Share</Text>
 
-          <View style={styles.statusContent}>
-            <View style={styles.donutOuter}>
-              <View style={styles.donutInner}>
-                <Text style={styles.donutValue}>384</Text>
-                <Text style={styles.donutLabel}>Orders</Text>
+          {report.totalOrders === 0 ? (
+            <View style={styles.emptyState}>
+              <MaterialCommunityIcons
+                name="chart-donut-variant"
+                size={34}
+                color={BLUE_TINT}
+              />
+              <Text style={styles.emptyTitle}>No orders yet</Text>
+              <Text style={styles.emptySubtitle}>
+                New orders will appear here as soon as customers book.
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.statusContent}>
+              <View style={styles.donutOuter}>
+                <View style={styles.donutInner}>
+                  <Text style={styles.donutValue}>{report.totalOrders}</Text>
+                  <Text style={styles.donutLabel}>Orders</Text>
+                </View>
+              </View>
+
+              <View style={styles.legend}>
+                {legendItems.map((item) => (
+                  <View key={item.label} style={styles.legendRow}>
+                    <View
+                      style={[styles.legendDot, { backgroundColor: item.color }]}
+                    />
+                    <Text style={styles.legendText}>{item.label}</Text>
+                    <Text style={styles.legendValue}>
+                      {item.percent}% · {item.count}
+                    </Text>
+                  </View>
+                ))}
               </View>
             </View>
-
-            <View style={styles.legend}>
-              {legendItems.map((item) => (
-                <View key={item.label} style={styles.legendRow}>
-                  <View style={[styles.legendDot, { backgroundColor: item.color }]} />
-                  <Text style={styles.legendText}>{item.label}</Text>
-                  <Text style={styles.legendValue}>{item.value}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -227,8 +271,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F7FA',
   },
   container: {
-    paddingHorizontal: 20,
+    paddingHorizontal: isWeb ? 32 : 20,
     paddingBottom: 40,
+    ...(isWeb ? { maxWidth: 700, alignSelf: 'center', width: '100%' } : {}),
   },
   dateCard: {
     flexDirection: 'row',
@@ -334,6 +379,25 @@ const styles = StyleSheet.create({
   statusContent: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 18,
+  },
+  emptyTitle: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 14,
+    color: TEXT_DARK,
+    marginTop: 10,
+  },
+  emptySubtitle: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 12,
+    color: TEXT_MUTED,
+    textAlign: 'center',
+    marginTop: 4,
+    paddingHorizontal: 20,
+    lineHeight: 18,
   },
   donutOuter: {
     width: 150,

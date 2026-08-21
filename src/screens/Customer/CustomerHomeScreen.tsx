@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   Modal,
+  Platform,
   ScrollView,
   Share,
   StyleSheet,
@@ -23,12 +24,14 @@ import {
 
 import { useAuth } from '../../hooks/useAuth';
 import { useOrders } from '../../context/OrdersContext';
+import { useNotifications } from '../../context/NotificationsContext';
 import {
   isOrderActive,
   type CustomerOrder,
 } from '../../data/orders';
 import type { CustomerTabNavigation } from '../../navigation/types';
 
+const isWeb = Platform.OS === 'web';
 const TEAL = '#0F363F';
 const TEAL_MID = '#1E5660';
 const TEXT_DARK = '#1F2933';
@@ -103,6 +106,7 @@ const quickActions: QuickAction[] = [
 export default function CustomerHomeScreen() {
   const { user, signOut } = useAuth();
   const { orders } = useOrders();
+  const { unreadCount } = useNotifications();
   const navigation = useNavigation<CustomerTabNavigation>();
   const [menuVisible, setMenuVisible] = useState(false);
   const [ratingVisible, setRatingVisible] = useState(false);
@@ -171,7 +175,7 @@ export default function CustomerHomeScreen() {
               onPress={() => navigation.navigate('Notifications')}
             >
               <MaterialCommunityIcons name="bell-outline" size={22} color={WHITE} />
-              <View style={styles.bellBadge} />
+              {unreadCount > 0 && <View style={styles.bellBadge} />}
             </TouchableOpacity>
           </View>
 
@@ -224,6 +228,9 @@ export default function CustomerHomeScreen() {
                 >
                   <MaterialCommunityIcons name={action.icon} size={24} color={action.color} />
                   {action.title === 'Track Order' && activeOrder && (
+                    <View style={styles.gridDot} />
+                  )}
+                  {action.title === 'Notifications' && unreadCount > 0 && (
                     <View style={styles.gridDot} />
                   )}
                 </View>
@@ -426,7 +433,7 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
   header: {
-    paddingHorizontal: 20,
+    paddingHorizontal: isWeb ? 32 : 20,
     paddingTop: 14,
     paddingBottom: 30,
     borderBottomLeftRadius: 28,
@@ -456,6 +463,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 22,
+    ...(isWeb ? { maxWidth: 600, alignSelf: 'center', width: '100%' } : {}),
   },
   avatar: {
     width: 44,
@@ -499,8 +507,9 @@ const styles = StyleSheet.create({
     color: WHITE,
   },
   content: {
-    paddingHorizontal: 20,
+    paddingHorizontal: isWeb ? 32 : 20,
     marginTop: -16,
+    ...(isWeb ? { maxWidth: 600, alignSelf: 'center', width: '100%' } : {}),
   },
   bookCard: {
     flexDirection: 'row',
@@ -560,7 +569,7 @@ const styles = StyleSheet.create({
     marginBottom: 22,
   },
   gridCard: {
-    width: '48%',
+    width: isWeb ? '31%' : '48%',
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: WHITE,
@@ -575,6 +584,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
+    ...(isWeb ? { cursor: 'pointer' } : {}),
   },
   gridIcon: {
     width: 42,
@@ -680,6 +690,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.18,
     shadowRadius: 18,
     elevation: 16,
+    ...(isWeb ? { maxWidth: 480, alignSelf: 'center', width: '100%' } : {}),
   },
   menuHandle: {
     alignSelf: 'center',
@@ -778,6 +789,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.25,
     shadowRadius: 20,
+    ...(isWeb ? { maxWidth: 420, alignSelf: 'center', width: '100%' } : {}),
   },
   ratingIcon: {
     width: 64,

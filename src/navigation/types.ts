@@ -20,6 +20,12 @@ export type CustomerStackParamList = {
   Addresses: undefined;
   Settings: undefined;
   Support: undefined;
+  Chat: {
+    orderId: string;
+    contactName: string;
+    myRole: 'customer' | 'driver';
+    myName: string;
+  };
 };
 
 export type CustomerTabNavigation = CompositeNavigationProp<
