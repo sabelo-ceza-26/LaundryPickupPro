@@ -226,16 +226,25 @@ export default function DateTimePickerModal({
                   0
                 );
                 const selected = slot.getHours() === value.getHours();
+                const isToday = isSameDay(value, new Date());
+                const now = new Date();
+                const isPast = isToday && hour < now.getHours();
                 return (
                   <TouchableOpacity
                     key={hour}
-                    style={[styles.timeChip, selected && styles.timeChipSelected]}
+                    style={[
+                      styles.timeChip,
+                      selected && styles.timeChipSelected,
+                      isPast && styles.timeChipDisabled,
+                    ]}
+                    disabled={isPast}
                     onPress={() => selectTime(hour)}
                   >
                     <Text
                       style={[
                         styles.timeChipText,
                         selected && styles.timeChipTextSelected,
+                        isPast && styles.timeChipTextDisabled,
                       ]}
                     >
                       {formatTimeWindow(slot)}
@@ -405,5 +414,13 @@ const styles = StyleSheet.create({
   timeChipTextSelected: {
     fontFamily: 'Poppins_600SemiBold',
     color: TEAL,
+  },
+  timeChipDisabled: {
+    opacity: 0.35,
+    backgroundColor: '#F1F4F6',
+    borderColor: '#F1F4F6',
+  },
+  timeChipTextDisabled: {
+    color: TEXT_MUTED,
   },
 });
