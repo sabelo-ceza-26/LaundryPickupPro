@@ -44,14 +44,7 @@ const GRADIENT_VIBRANT = [BLUE, PURPLE] as const;
 const PAYMENT_METHODS = ['Card', 'EFT', 'Cash'] as const;
 
 const PRESET_ITEMS: { name: string; price: number; icon: Icon }[] = [
-  { name: 'Wash & Fold (per kg)', price: 55, icon: 'water-outline' },
-  { name: 'Wash & Iron (per kg)', price: 85, icon: 'iron' },
-  { name: 'Ironing Only (per item)', price: 15, icon: 'hanger' },
-  { name: 'Comforter (Queen)', price: 85, icon: 'bed-double-outline' },
-  { name: 'Blanket (Double)', price: 55, icon: 'bed-outline' },
-  { name: 'Curtains (per panel)', price: 40, icon: 'window-closed-variant' },
-  { name: 'Towel Set', price: 45, icon: 'tshirt-crew-outline' },
-  { name: 'Sneakers (per pair)', price: 35, icon: 'shoe-sneaker' },
+  { name: 'Pickup & Delivery', price: 60, icon: 'truck-delivery-outline' },
 ];
 
 let nextOrderNumber = 9036;
@@ -69,6 +62,8 @@ function currentStamp(): string {
   });
   return `${date} · ${time}`;
 }
+
+const isWeb = Platform.OS === 'web';
 
 export default function AdminAddOrderModal({
   visible,
@@ -109,7 +104,7 @@ export default function AdminAddOrderModal({
     setDriverPhone('083 000 0000');
     setInstructions('');
     setPaymentMethod('Card');
-    setItems([{ name: 'Wash & Fold (per kg)', quantity: 1, price: 55 }]);
+    setItems([{ name: 'Pickup & Delivery', quantity: 1, price: 60 }]);
     setCustomName('');
     setCustomPrice('');
     setCustomError('');
@@ -533,17 +528,23 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(18, 38, 58, 0.55)',
-    justifyContent: 'flex-end',
+    justifyContent: isWeb ? 'center' : 'flex-end',
+    alignItems: isWeb ? 'center' : undefined,
+    paddingHorizontal: isWeb ? 20 : 0,
   },
   backdropTouch: {
     flex: 1,
+    ...(isWeb ? { width: '100%' } : {}),
   },
   sheet: {
     backgroundColor: '#F5F7FA',
-    borderTopLeftRadius: 26,
-    borderTopRightRadius: 26,
-    maxHeight: '94%',
+    borderTopLeftRadius: isWeb ? 26 : 26,
+    borderTopRightRadius: isWeb ? 26 : 26,
+    borderBottomLeftRadius: isWeb ? 26 : 0,
+    borderBottomRightRadius: isWeb ? 26 : 0,
+    maxHeight: isWeb ? '85%' : '94%',
     overflow: 'hidden',
+    ...(isWeb ? { width: '100%', maxWidth: 520 } : {}),
   },
   header: {
     paddingHorizontal: 20,
