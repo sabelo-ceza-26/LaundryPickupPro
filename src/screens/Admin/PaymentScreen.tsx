@@ -89,7 +89,7 @@ function ServiceItem({
   );
 }
 
-type PricingKey = keyof Pricing;
+type PricingKey = Exclude<keyof Pricing, 'distanceRate'>;
 
 const PRICING_FIELDS: {
   key: PricingKey;
